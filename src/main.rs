@@ -35,21 +35,24 @@ fn flexible_timestamp_parse(ts: String) -> Option<chrono::DateTime<chrono::Utc>>
 }
 
 /// lat, long are floats
-/// time is like 2020-11-30T20:12:36.444Z (ISO 8601)
+/// time is like 2020-11-30T20:12:36.444Z (ISO 8601). By default, server time is set.
 #[rocket::get("/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>")]
 fn hello(
     db: DBConn,
     name: String,
     lat: f64,
     longitude: f64,
-    time: String,
-    s: f64,
+    time: Option<String>,
+    s: Option<f64>,
     ele: Option<f64>,
 ) -> rocket::http::Status {
     if name.chars().any(|c| !c.is_alphanumeric()) {
         return rocket::http::Status::NotAcceptable;
     }
-    let ts = flexible_timestamp_parse(time);
+    let mut ts = chrono::Utc::now();
+    if let Some(time) = time {
+        ts = flexible_timestamp_parse(time).unwrap_or(ts);
+    }
     db.0.execute(
         "INSERT INTO geohub.geodata (id, lat, long, spd, t, ele) VALUES ($1, $2, $3, $4, $5, $6)",
         &[&name, &lat, &longitude, &s, &ts, &ele],
