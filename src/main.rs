@@ -180,10 +180,10 @@ fn retrieve_live(
     // Otherwise we will wait for the next update.
     //
     let listen =
-        db.0.prepare_cached(format!("LISTEN {}", name).as_str())
+        db.0.prepare_cached(format!("LISTEN geohubclient_update_{}", name).as_str())
             .unwrap();
     let unlisten =
-        db.0.prepare_cached(format!("UNLISTEN {}", name).as_str())
+        db.0.prepare_cached(format!("UNLISTEN geohubclient_update_{}", name).as_str())
             .unwrap();
 
     listen.execute(&[]).ok();
@@ -282,7 +282,7 @@ fn log(
     }
     let stmt = db.0.prepare_cached("INSERT INTO geohub.geodata (client, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'))").unwrap();
     let notify =
-        db.0.prepare_cached(format!("NOTIFY {}, '{}'", name, name).as_str())
+        db.0.prepare_cached(format!("NOTIFY geohubclient_update_{}, '{}'", name, name).as_str())
             .unwrap();
     stmt.execute(&[&name, &lat, &longitude, &s, &ts, &ele, &secret])
         .unwrap();

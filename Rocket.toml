@@ -1,2 +1,7 @@
 [global.databases]
 geohub = { url = "postgresql://lbo:pglbo@localhost/lbo" }
+
+[production]
+log = "normal"
+address = "::1"
+port = 8000
