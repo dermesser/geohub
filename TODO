@@ -1,6 +1,3 @@
-* move table into schema
-* use ids for geo records
-* ids only alphanumeric
 * notify via dynamic channels? static channels? polling?
 * deploy first version
 
