@@ -108,8 +108,6 @@ fn retrieve_json(
         .and_then(flexible_timestamp_parse)
         .unwrap_or(chrono::Utc::now());
     let max = max.unwrap_or(16384);
-    //println!("from {:?} to {:?}", from_ts, to_ts);
-    //println!("secret {:?}", secret);
 
     let stmt = db.0.prepare_cached(
         r"SELECT t, lat, long, spd, ele FROM geohub.geodata
@@ -119,7 +117,6 @@ fn retrieve_json(
         .query(&[&name, &from_ts, &to_ts, &secret, &max])
         .unwrap();
     {
-        println!("got {} rows", rows.len());
         returnable.features = Vec::with_capacity(rows.len());
         for row in rows.iter() {
             let (ts, lat, long, spd, ele): (
@@ -161,8 +158,12 @@ fn log(
         ts = flexible_timestamp_parse(time).unwrap_or(ts);
     }
     let stmt = db.0.prepare_cached("INSERT INTO geohub.geodata (id, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'))").unwrap();
+    let notify =
+        db.0.prepare_cached(format!("NOTIFY {}, '{}'", name, name).as_str())
+            .unwrap();
     stmt.execute(&[&name, &lat, &longitude, &s, &ts, &ele, &secret])
         .unwrap();
+    notify.execute(&[]).unwrap();
     rocket::http::Status::Ok
 }
 
