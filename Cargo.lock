@@ -393,6 +393,7 @@ name = "geohub"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "fallible-iterator",
  "postgres",
  "rocket",
  "rocket_contrib",
@@ -1106,6 +1107,8 @@ dependencies = [
  "r2d2_postgres",
  "rocket",
  "rocket_contrib_codegen",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

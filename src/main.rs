@@ -5,6 +5,9 @@ use rocket;
 
 use chrono::TimeZone;
 
+use fallible_iterator::FallibleIterator;
+use std::iter::Iterator;
+
 #[rocket_contrib::database("geohub")]
 struct DBConn(postgres::Connection);
 
@@ -83,6 +86,127 @@ struct GeoJSON {
     features: Vec<GeoFeature>,
 }
 
+#[derive(serde::Serialize, Debug)]
+struct LiveUpdate {
+    #[serde(rename = "type")]
+    typ: String, // always "GeoHubUpdate"
+    last: Option<i32>, // page token -- send in next request!
+    geo: Option<GeoJSON>,
+}
+
+/// Queries for at most `limit` rows since entry ID `last`.
+fn check_for_new_rows(
+    db: &DBConn,
+    name: &String,
+    secret: &Option<String>,
+    last: &Option<i32>,
+    limit: &Option<i64>,
+) -> Option<(GeoJSON, i32)> {
+    let mut returnable = GeoJSON {
+        typ: "FeatureCollection".into(),
+        features: vec![],
+    };
+    let check_for_new = db.0.prepare_cached(
+        r"SELECT id, t, lat, long, spd, ele FROM geohub.geodata
+        WHERE (client = $1) and (id > $2) AND (secret = public.digest($3, 'sha256') or secret is null)
+        ORDER BY t DESC
+        LIMIT $4").unwrap(); // Must succeed.
+
+    let last = last.unwrap_or(0);
+    let limit = limit.unwrap_or(256);
+
+    let rows = check_for_new.query(&[&name, &last, &secret, &limit]);
+    if let Ok(rows) = rows {
+        // If there are unknown entries, return those.
+        if rows.len() > 0 {
+            returnable.features = Vec::with_capacity(rows.len());
+            let mut last = 0;
+
+            for row in rows.iter() {
+                let (id, ts, lat, long, spd, ele): (
+                    i32,
+                    chrono::DateTime<chrono::Utc>,
+                    Option<f64>,
+                    Option<f64>,
+                    Option<f64>,
+                    Option<f64>,
+                ) = (
+                    row.get(0),
+                    row.get(1),
+                    row.get(2),
+                    row.get(3),
+                    row.get(4),
+                    row.get(5),
+                );
+                returnable
+                    .features
+                    .push(geofeature_from_row(ts, lat, long, spd, ele));
+                if id > last {
+                    last = id;
+                }
+            }
+
+            return Some((returnable, last));
+        }
+        return None;
+    } else {
+        // For debugging.
+        rows.unwrap();
+    }
+    return None;
+}
+
+/// Wait for an update.
+#[rocket::get("/geo/<name>/retrieve/live?<secret>&<last>&<timeout>")]
+fn retrieve_live(
+    db: DBConn,
+    name: String,
+    secret: Option<String>,
+    last: Option<i32>,
+    timeout: Option<i32>,
+) -> rocket_contrib::json::Json<LiveUpdate> {
+    // Only if the client supplied a paging token should we check for new rows before. This is an
+    // optimization.
+    if last.is_some() {
+        if let Some((geojson, last)) = check_for_new_rows(&db, &name, &secret, &last, &None) {
+            return rocket_contrib::json::Json(LiveUpdate {
+                typ: "GeoHubUpdate".into(),
+                last: Some(last),
+                geo: Some(geojson),
+            });
+        }
+    }
+
+    // Otherwise we will wait for the next update.
+    //
+    let listen =
+        db.0.prepare_cached(format!("LISTEN {}", name).as_str())
+            .unwrap();
+    let unlisten =
+        db.0.prepare_cached(format!("UNLISTEN {}", name).as_str())
+            .unwrap();
+
+    listen.execute(&[]).ok();
+
+    let timeout = std::time::Duration::new(timeout.unwrap_or(30) as u64, 0);
+    if let Ok(_) = db.0.notifications().timeout_iter(timeout).next() {
+        unlisten.execute(&[]).ok();
+        if let Some((geojson, last)) = check_for_new_rows(&db, &name, &secret, &last, &Some(1)) {
+            return rocket_contrib::json::Json(LiveUpdate {
+                typ: "GeoHubUpdate".into(),
+                last: Some(last),
+                geo: Some(geojson),
+            });
+        }
+    }
+    unlisten.execute(&[]).ok();
+    return rocket_contrib::json::Json(LiveUpdate {
+        typ: "GeoHubUpdate".into(),
+        last: last,
+        geo: None,
+    });
+}
+
 /// Retrieve GeoJSON data.
 #[rocket::get("/geo/<name>/retrieve/json?<secret>&<from>&<to>&<max>")]
 fn retrieve_json(
@@ -92,7 +216,7 @@ fn retrieve_json(
     from: Option<String>,
     to: Option<String>,
     max: Option<i64>,
-) -> rocket::response::content::Json<String> {
+) -> rocket_contrib::json::Json<GeoJSON> {
     let mut returnable = GeoJSON {
         typ: "FeatureCollection".into(),
         features: vec![],
@@ -111,12 +235,11 @@ fn retrieve_json(
 
     let stmt = db.0.prepare_cached(
         r"SELECT t, lat, long, spd, ele FROM geohub.geodata
-        WHERE (id = $1) and (t between $2 and $3) AND (secret = public.digest($4, 'sha256') or secret is null)
+        WHERE (client = $1) and (t between $2 and $3) AND (secret = public.digest($4, 'sha256') or secret is null)
+        ORDER BY t ASC
         LIMIT $5").unwrap(); // Must succeed.
-    let rows = stmt
-        .query(&[&name, &from_ts, &to_ts, &secret, &max])
-        .unwrap();
-    {
+    let rows = stmt.query(&[&name, &from_ts, &to_ts, &secret, &max]);
+    if let Ok(rows) = rows {
         returnable.features = Vec::with_capacity(rows.len());
         for row in rows.iter() {
             let (ts, lat, long, spd, ele): (
@@ -132,7 +255,7 @@ fn retrieve_json(
         }
     }
 
-    rocket::response::content::Json(serde_json::to_string(&returnable).unwrap())
+    rocket_contrib::json::Json(returnable)
 }
 
 /// Ingest geo data.
@@ -157,7 +280,8 @@ fn log(
     if let Some(time) = time {
         ts = flexible_timestamp_parse(time).unwrap_or(ts);
     }
-    let stmt = db.0.prepare_cached("INSERT INTO geohub.geodata (id, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'))").unwrap();
+    println!("{}", name);
+    let stmt = db.0.prepare_cached("INSERT INTO geohub.geodata (client, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'))").unwrap();
     let notify =
         db.0.prepare_cached(format!("NOTIFY {}, '{}'", name, name).as_str())
             .unwrap();
@@ -170,6 +294,6 @@ fn log(
 fn main() {
     rocket::ignite()
         .attach(DBConn::fairing())
-        .mount("/", rocket::routes![log, retrieve_json])
+        .mount("/", rocket::routes![log, retrieve_json, retrieve_live])
         .launch();
 }
