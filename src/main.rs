@@ -16,17 +16,14 @@ fn flexible_timestamp_parse(ts: String) -> Option<chrono::DateTime<chrono::Utc>>
         "%Y-%m-%d %H:%M:%S%.f",
     ];
     for fs in fmtstrings {
-        println!("{} {}", fs, ts);
         let (naive, withtz) = (
             chrono::NaiveDateTime::parse_from_str(ts.as_str(), fs).ok(),
             chrono::DateTime::parse_from_str(ts.as_str(), fs).ok(),
         );
         if let Some(p) = withtz {
-            println!("tz: {:?}", p);
             return Some(p.with_timezone(&chrono::Utc));
         }
         if let Some(p) = naive {
-            println!("naive: {:?}", p);
             let utcd = chrono::Utc.from_utc_datetime(&p);
             return Some(utcd);
         }

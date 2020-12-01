@@ -27,11 +27,12 @@ SET default_table_access_method = heap;
 CREATE SCHEMA IF NOT EXISTS geohub;
 
 CREATE TABLE geohub.geodata (
-    id text,
+    id text not null,
     lat double precision,
     long double precision,
     spd double precision,
-    t timestamp with time zone
+    t timestamp with time zone,
+    ele double precision
 );
 
 
