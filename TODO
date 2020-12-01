@@ -3,3 +3,8 @@
 * ids only alphanumeric
 * notify via dynamic channels? static channels? polling?
 * deploy first version
+
+FEATURES
+
+* live map + map history (UI)
+* GPX/json export (with UI + API)
