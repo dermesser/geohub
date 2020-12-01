@@ -28,6 +28,7 @@ CREATE SCHEMA IF NOT EXISTS geohub;
 
 CREATE TABLE geohub.geodata (
     id text not null,
+    secret text,
     lat double precision,
     long double precision,
     spd double precision,

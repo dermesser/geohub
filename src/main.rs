@@ -31,14 +31,15 @@ fn flexible_timestamp_parse(ts: String) -> Option<chrono::DateTime<chrono::Utc>>
     None
 }
 
-/// lat, long are floats
 /// time is like 2020-11-30T20:12:36.444Z (ISO 8601). By default, server time is set.
-#[rocket::get("/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>")]
-fn hello(
+/// secret can be used to protect points.
+#[rocket::get("/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>&<secret>")]
+fn log(
     db: DBConn,
     name: String,
     lat: f64,
     longitude: f64,
+    secret: Option<String>,
     time: Option<String>,
     s: Option<f64>,
     ele: Option<f64>,
@@ -51,8 +52,8 @@ fn hello(
         ts = flexible_timestamp_parse(time).unwrap_or(ts);
     }
     db.0.execute(
-        "INSERT INTO geohub.geodata (id, lat, long, spd, t, ele) VALUES ($1, $2, $3, $4, $5, $6)",
-        &[&name, &lat, &longitude, &s, &ts, &ele],
+        "INSERT INTO geohub.geodata (id, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        &[&name, &lat, &longitude, &s, &ts, &ele, &secret],
     )
     .unwrap();
     rocket::http::Status::Ok
@@ -61,6 +62,6 @@ fn hello(
 fn main() {
     rocket::ignite()
         .attach(DBConn::fairing())
-        .mount("/", rocket::routes![hello])
+        .mount("/", rocket::routes![log])
         .launch();
 }
