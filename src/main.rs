@@ -168,10 +168,10 @@ fn retrieve_live(
     // Only if the client supplied a paging token should we check for new rows before. This is an
     // optimization.
     if last.is_some() {
-        if let Some((geojson, last)) = check_for_new_rows(&db, &name, &secret, &last, &None) {
+        if let Some((geojson, newlast)) = check_for_new_rows(&db, &name, &secret, &last, &None) {
             return rocket_contrib::json::Json(LiveUpdate {
                 typ: "GeoHubUpdate".into(),
-                last: Some(last),
+                last: Some(newlast),
                 geo: Some(geojson),
             });
         }
@@ -280,7 +280,6 @@ fn log(
     if let Some(time) = time {
         ts = flexible_timestamp_parse(time).unwrap_or(ts);
     }
-    println!("{}", name);
     let stmt = db.0.prepare_cached("INSERT INTO geohub.geodata (client, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'))").unwrap();
     let notify =
         db.0.prepare_cached(format!("NOTIFY {}, '{}'", name, name).as_str())
