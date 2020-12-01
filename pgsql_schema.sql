@@ -24,7 +24,10 @@ SET default_table_access_method = heap;
 -- Name: geodata; Type: TABLE; Schema: public; Owner: lbo
 --
 
-CREATE TABLE public.geodata (
+CREATE SCHEMA IF NOT EXISTS geohub;
+
+CREATE TABLE geohub.geodata (
+    id text,
     lat double precision,
     long double precision,
     spd double precision,
@@ -32,7 +35,7 @@ CREATE TABLE public.geodata (
 );
 
 
-ALTER TABLE public.geodata OWNER TO lbo;
+ALTER TABLE geohub.geodata OWNER TO lbo;
 
 --
 -- PostgreSQL database dump complete
