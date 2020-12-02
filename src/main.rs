@@ -296,12 +296,16 @@ fn assets(
     file: std::path::PathBuf,
 ) -> Result<rocket::response::NamedFile, rocket::response::status::NotFound<String>> {
     let p = std::path::Path::new("assets/").join(file);
-    rocket::response::NamedFile::open(&p).map_err(|e| rocket::response::status::NotFound(e.to_string()))
+    rocket::response::NamedFile::open(&p)
+        .map_err(|e| rocket::response::status::NotFound(e.to_string()))
 }
 
 fn main() {
     rocket::ignite()
         .attach(DBConn::fairing())
-        .mount("/", rocket::routes![log, retrieve_json, retrieve_live, assets])
+        .mount(
+            "/",
+            rocket::routes![log, retrieve_json, retrieve_live, assets],
+        )
         .launch();
 }
