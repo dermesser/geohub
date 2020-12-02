@@ -43,7 +43,7 @@ fn flexible_timestamp_parse(ts: String) -> Option<chrono::DateTime<chrono::Utc>>
 struct LiveUpdate {
     #[serde(rename = "type")]
     typ: String, // always "GeoHubUpdate"
-    last: Option<i32>, // page token -- send in next request!
+    last: Option<i32>,
     geo: Option<types::GeoJSON>,
     error: Option<String>,
 }
