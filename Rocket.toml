@@ -1,8 +1,9 @@
 [global.databases]
-geohub = { url = "postgresql://lbo:pglbo@localhost/lbo" }
+geohub = { url = "postgresql://lbo:pglbo@localhost/lbo", pool_size = 4 }
+# Majority of workers is expected to be waiting for updates.
 
 [development]
-workers = 8
+workers = 16
 
 [production]
 log = "normal"
