@@ -331,7 +331,7 @@ impl<T> SendableSender<T> {
 fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Connection) {
     const TICK_MILLIS: u32 = 500;
 
-    let mut clients: HashMap<String, NotifyRequest> = HashMap::new();
+    let mut clients: HashMap<String, Vec<NotifyRequest>> = HashMap::new();
 
     fn listen(db: &postgres::Connection, client: &str) -> postgres::Result<u64> {
         db.execute(&format!("LISTEN geohubclient_update_{}", client), &[])
@@ -350,7 +350,10 @@ fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Connect
                 if !clients.contains_key(&nrq.client) {
                     listen(&db, &nrq.client).ok();
                 }
-                clients.insert(nrq.client.clone(), nrq);
+                clients
+                    .entry(nrq.client.clone())
+                    .or_insert(vec![])
+                    .push(nrq);
             } else {
                 break;
             }
@@ -364,10 +367,12 @@ fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Connect
             let payload = notification.payload;
             unlisten(&db, &payload).ok();
 
-            if let Some(request) = clients.remove(&payload) {
+            for request in clients.remove(&payload).unwrap_or(vec![]) {
                 request
                     .respond
-                    .send(NotifyResponse { client: payload })
+                    .send(NotifyResponse {
+                        client: payload.clone(),
+                    })
                     .ok();
             }
 
