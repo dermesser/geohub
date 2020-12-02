@@ -35,19 +35,21 @@
         L.circle([oldCoord.lat, oldCoord.lng], circleProps).addTo(mymap);
     }
 
-    var lastID = -1;
+    var lastID = 1;
     xhrcallback = function(xhr) {
         console.log('xhrcallback called.');
         if (xhr.readyState === 4 && xhr.status == 200) {
             const response = xhr.response;
-            const features = response['geo']['features'];
-            const newLastID = response['last'];
-            const lastfeature = features[features.length-1];
-            const coords = lastfeature['geometry']['coordinates'];
+            if (response['geo']) {
+                const features = response['geo']['features'];
+                const newLastID = response['last'];
+                const lastfeature = features[0];
+                const coords = lastfeature['geometry']['coordinates'];
 
-            console.log('Received update:', coords, 'last:', response);
-            setCurrentLocation(coords[1], coords[0]);
-            window.lastID = newLastID;
+                console.log('Received update:', coords, 'last:', response);
+                setCurrentLocation(coords[1], coords[0]);
+                window.lastID = newLastID;
+            }
 
             // Install next XHR.
             waitforupdate();

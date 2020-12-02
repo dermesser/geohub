@@ -109,7 +109,7 @@ fn check_for_new_rows(
     let check_for_new = db.0.prepare_cached(
         r"SELECT id, t, lat, long, spd, ele FROM geohub.geodata
         WHERE (client = $1) and (id > $2) AND (secret = public.digest($3, 'sha256') or secret is null)
-        ORDER BY t DESC
+        ORDER BY id DESC
         LIMIT $4").unwrap(); // Must succeed.
 
     let last = last.unwrap_or(0);
@@ -157,6 +157,8 @@ fn check_for_new_rows(
 }
 
 /// Wait for an update.
+///
+/// Points are returned in descending order of time.
 #[rocket::get("/geo/<name>/retrieve/live?<secret>&<last>&<timeout>")]
 fn retrieve_live(
     db: DBConn,
