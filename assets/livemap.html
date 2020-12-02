@@ -1,0 +1,75 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="thirdparty/leaflet.css" />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+
+    <script src="thirdparty/leaflet.js"></script>
+    <div id="mapid"> </div>
+
+    <script>
+    var mymap = L.map('mapid').setView([50.77, 6.11], 13);
+
+    var accessToken = 'pk.eyJ1IjoiZGVybWVzc2VyIiwiYSI6ImNraTdwZmUxZTE2OGgydW1oYTU5eW9qYm4ifQ.f9OxY_U78h6iefp-jN9-9w';
+    L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+        maxZoom: 18,
+        id: 'mapbox/streets-v11',
+        tileSize: 512,
+        zoomOffset: -1,
+        accessToken: accessToken,
+    }).addTo(mymap);
+
+    var urlParams = new URLSearchParams(window.location.search);
+    var url = new URL(window.location);
+    var secret = urlParams.get('secret');
+    var client = urlParams.get('client');
+
+    var current_marker = L.marker([0,0]).addTo(mymap);
+    const circleProps = {color: 'blue', fillcColor: 'blue', fillOpacity: 0.5, radius: 3}
+    function setCurrentLocation(lat, lng) {
+        var oldCoord = current_marker.getLatLng();
+        current_marker.setLatLng(L.latLng(lat, lng));
+        // Show last locations as blue points.
+        L.circle([oldCoord.lat, oldCoord.lng], circleProps).addTo(mymap);
+    }
+
+    var lastID = -1;
+    xhrcallback = function(xhr) {
+        console.log('xhrcallback called.');
+        if (xhr.readyState === 4 && xhr.status == 200) {
+            const response = xhr.response;
+            const features = response['geo']['features'];
+            const newLastID = response['last'];
+            const lastfeature = features[features.length-1];
+            const coords = lastfeature['geometry']['coordinates'];
+
+            console.log('Received update:', coords, 'last:', response);
+            setCurrentLocation(coords[1], coords[0]);
+            window.lastID = newLastID;
+
+            // Install next XHR.
+            waitforupdate();
+        }
+    };
+
+    waitforupdate = function() {
+        xhr = new XMLHttpRequest();
+        var url = `/geo/${client}/retrieve/live?secret=${secret}&timeout=50`;
+        if (lastID > 0) {
+            url += `&last=${lastID}`;
+        }
+        console.log('Requesting URL ' + url);
+        xhr.responseType = 'json';
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function() { xhrcallback(xhr) };
+        xhr.send();
+    }
+
+    waitforupdate();
+
+    </script>
+
+    </body>
+</html>
