@@ -193,6 +193,7 @@ fn retrieve_last(
         error: Some("No new rows returned".into()),
     });
 }
+
 /// Wait for an update.
 /// Only one point is returned. To retrieve a history of points, call retrieve_last.
 #[rocket::get("/geo/<name>/retrieve/live?<secret>&<timeout>")]
@@ -210,6 +211,8 @@ fn retrieve_live(
             error: Some("You have supplied an invalid secret or name. Both must be ASCII alphanumeric strings.".into()),
         });
     }
+
+    // Ask the notify thread to tell us when there is an update for this client name and secret.
     let (send, recv) = mpsc::channel();
     let send = SendableSender {
         sender: Arc::new(Mutex::new(send)),
@@ -223,7 +226,6 @@ fn retrieve_live(
     notify_manager.send(req).unwrap();
 
     if let Ok(response) = recv.recv_timeout(time::Duration::new(timeout.unwrap_or(30), 0)) {
-        eprintln!("Worker received response for {}", response.client);
         return rocket_contrib::json::Json(LiveUpdate {
             typ: "GeoHubUpdate".into(),
             last: response.last,
@@ -319,7 +321,6 @@ fn log(
         channel_name(name.as_str(), secret.as_ref().unwrap_or(&"".into())),
         name
     );
-    eprintln!("notifying channel {}", channel);
     let notify = db.0.prepare_cached(channel.as_str()).unwrap();
     stmt.execute(&[&name, &lat, &longitude, &s, &ts, &ele, &secret])
         .unwrap();
@@ -327,7 +328,7 @@ fn log(
     rocket::http::Status::Ok
 }
 
-/// Serve static files
+/// Serve static files.
 #[rocket::get("/geo/assets/<file..>")]
 fn assets(
     file: std::path::PathBuf,
@@ -337,20 +338,21 @@ fn assets(
         .map_err(|e| rocket::response::status::NotFound(e.to_string()))
 }
 
-// Notify all waiters using just one DB connection.
+/// Request of a web client thread to the notifier thread.
 struct NotifyRequest {
     client: String,
     secret: Option<String>,
     respond: SendableSender<NotifyResponse>,
 }
 
+/// Response from the notifier thread to a web client thread.
 struct NotifyResponse {
-    client: String,
     // The GeoJSON object containing the update and the `last` page token.
     geo: Option<GeoJSON>,
     last: Option<i32>,
 }
 
+/// A `Send` sender.
 #[derive(Clone)]
 struct SendableSender<T> {
     sender: Arc<Mutex<mpsc::Sender<T>>>,
@@ -363,6 +365,7 @@ impl<T> SendableSender<T> {
     }
 }
 
+/// Check if client name and secret are acceptable.
 fn name_and_secret_acceptable(client: &str, secret: Option<&str>) -> bool {
     !(client.chars().any(|c| !c.is_ascii_alphanumeric())
         || secret
@@ -371,11 +374,14 @@ fn name_and_secret_acceptable(client: &str, secret: Option<&str>) -> bool {
             .any(|c| !c.is_ascii_alphanumeric()))
 }
 
+/// Build a channel name from a client name and secret.
 fn channel_name(client: &str, secret: &str) -> String {
     // The log handler should check this.
     assert!(secret.find('_').is_none());
     format!("geohubclient_update_{}_{}", client, secret)
 }
+
+/// Extract client name and secret from the database channel name.
 fn client_secret(channel_name: &str) -> (&str, &str) {
     // Channel name is like geohubclient_update_<client>_<secret>
     let parts = channel_name.split('_').collect::<Vec<&str>>();
@@ -383,13 +389,13 @@ fn client_secret(channel_name: &str) -> (&str, &str) {
     return (parts[2], parts[3]);
 }
 
+/// Listen for notifications in the database and dispatch to waiting clients.
 fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Connection) {
     const TICK_MILLIS: u32 = 500;
 
     let mut clients: HashMap<String, Vec<NotifyRequest>> = HashMap::new();
 
     fn listen(db: &postgres::Connection, client: &str, secret: &str) -> postgres::Result<u64> {
-        eprintln!("listening on channel {}", channel_name(client, secret));
         let n = db
             .execute(
                 &format!("LISTEN {}", channel_name(client, secret).as_str()),
@@ -399,12 +405,10 @@ fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Connect
         Ok(n)
     }
     fn unlisten(db: &postgres::Connection, chan: &str) -> postgres::Result<u64> {
-        eprintln!("unlistening on channel {}", chan);
         let n = db.execute(&format!("UNLISTEN {}", chan), &[]).unwrap();
         Ok(n)
     }
 
-    eprintln!("Notification thread running.");
     loop {
         // This loop checks for new messages on rx, then checks for new database notifications, etc.
 
@@ -433,10 +437,6 @@ fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Connect
             let chan = notification.channel;
             let (client, secret) = client_secret(chan.as_str());
             unlisten(&db, &chan).ok();
-            eprintln!(
-                "looking at channel {} client {} secret {}",
-                chan, client, secret
-            );
 
             // These queries use the primary key index returning one row only and will be quite fast.
             // Still: One query per client.
@@ -447,7 +447,6 @@ fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Connect
                     request
                         .respond
                         .send(NotifyResponse {
-                            client: client.into(),
                             geo: Some(geo.clone()),
                             last: Some(last),
                         })
@@ -458,7 +457,6 @@ fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Connect
                     request
                         .respond
                         .send(NotifyResponse {
-                            client: client.into(),
                             geo: None,
                             last: None,
                         })
