@@ -161,6 +161,8 @@ fn check_for_new_rows(
     return None;
 }
 
+/// Almost like retrieve/json, but sorts in descending order and doesn't work with intervals (only
+/// limit). Used for backfilling recent points in the UI.
 #[rocket::get("/geo/<name>/retrieve/last?<secret>&<last>&<limit>")]
 fn retrieve_last(
     db: DBConn,
@@ -219,14 +221,14 @@ fn retrieve_live(
 }
 
 /// Retrieve GeoJSON data.
-#[rocket::get("/geo/<name>/retrieve/json?<secret>&<from>&<to>&<max>")]
+#[rocket::get("/geo/<name>/retrieve/json?<secret>&<from>&<to>&<limit>")]
 fn retrieve_json(
     db: DBConn,
     name: String,
     secret: Option<String>,
     from: Option<String>,
     to: Option<String>,
-    max: Option<i64>,
+    limit: Option<i64>,
 ) -> rocket_contrib::json::Json<GeoJSON> {
     let mut returnable = GeoJSON {
         typ: "FeatureCollection".into(),
@@ -242,14 +244,14 @@ fn retrieve_json(
     let to_ts = to
         .and_then(flexible_timestamp_parse)
         .unwrap_or(chrono::Utc::now());
-    let max = max.unwrap_or(16384);
+    let limit = limit.unwrap_or(16384);
 
     let stmt = db.0.prepare_cached(
         r"SELECT t, lat, long, spd, ele FROM geohub.geodata
         WHERE (client = $1) and (t between $2 and $3) AND (secret = public.digest($4, 'sha256') or secret is null)
         ORDER BY t ASC
         LIMIT $5").unwrap(); // Must succeed.
-    let rows = stmt.query(&[&name, &from_ts, &to_ts, &secret, &max]);
+    let rows = stmt.query(&[&name, &from_ts, &to_ts, &secret, &limit]);
     if let Ok(rows) = rows {
         returnable.features = Vec::with_capacity(rows.len());
         for row in rows.iter() {
