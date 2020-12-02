@@ -2,10 +2,10 @@
 geohub = { url = "postgresql://lbo:pglbo@localhost/lbo" }
 
 [development]
-workers = 5
+workers = 8
 
 [production]
 log = "normal"
 address = "::1"
 port = 8000
-workers = 5
+workers = 8
