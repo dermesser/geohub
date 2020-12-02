@@ -39,15 +39,6 @@ fn flexible_timestamp_parse(ts: String) -> Option<chrono::DateTime<chrono::Utc>>
     None
 }
 
-#[derive(serde::Serialize, Debug)]
-struct LiveUpdate {
-    #[serde(rename = "type")]
-    typ: String, // always "GeoHubUpdate"
-    last: Option<i32>,
-    geo: Option<types::GeoJSON>,
-    error: Option<String>,
-}
-
 /// Almost like retrieve/json, but sorts in descending order and doesn't work with intervals (only
 /// limit). Used for backfilling recent points in the UI.
 #[rocket::get("/geo/<name>/retrieve/last?<secret>&<last>&<limit>")]
@@ -78,6 +69,15 @@ fn retrieve_last(
         geo: None,
         error: Some("No new rows returned".into()),
     });
+}
+
+#[derive(serde::Serialize, Debug)]
+struct LiveUpdate {
+    #[serde(rename = "type")]
+    typ: String, // always "GeoHubUpdate"
+    last: Option<i32>,
+    geo: Option<types::GeoJSON>,
+    error: Option<String>,
 }
 
 /// Wait for an update.
