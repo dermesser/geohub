@@ -29,14 +29,7 @@ pub fn check_for_new_rows(
             let mut last = 0;
 
             for row in rows.iter() {
-                let (id, ts, lat, long, spd, ele): (
-                    i32,
-                    chrono::DateTime<chrono::Utc>,
-                    Option<f64>,
-                    Option<f64>,
-                    Option<f64>,
-                    Option<f64>,
-                ) = (
+                let (id, ts, lat, long, spd, ele) = (
                     row.get(0),
                     row.get(1),
                     row.get(2),
@@ -61,4 +54,3 @@ pub fn check_for_new_rows(
     }
     return None;
 }
-

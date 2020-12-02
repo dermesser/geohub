@@ -5,14 +5,13 @@ mod ids;
 mod notifier;
 mod types;
 
-use std::time;
 use std::sync::{mpsc, Arc, Mutex};
+use std::time;
 
 use postgres;
 use rocket;
 
 use chrono::TimeZone;
-
 
 #[rocket_contrib::database("geohub")]
 struct DBConn(postgres::Connection);
@@ -89,7 +88,7 @@ fn retrieve_live(
     name: String,
     secret: Option<String>,
     timeout: Option<u64>,
-) -> rocket_contrib::json::Json<LiveUpdate>  {
+) -> rocket_contrib::json::Json<LiveUpdate> {
     if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
         return rocket_contrib::json::Json(LiveUpdate {
             typ: "GeoHubUpdate".into(),
@@ -163,13 +162,8 @@ fn retrieve_json(
     if let Ok(rows) = rows {
         returnable.features = Vec::with_capacity(rows.len());
         for row in rows.iter() {
-            let (ts, lat, long, spd, ele): (
-                chrono::DateTime<chrono::Utc>,
-                Option<f64>,
-                Option<f64>,
-                Option<f64>,
-                Option<f64>,
-            ) = (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4));
+            let (ts, lat, long, spd, ele) =
+                (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4));
             returnable
                 .features
                 .push(types::geofeature_from_row(ts, lat, long, spd, ele));
