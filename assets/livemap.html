@@ -36,15 +36,14 @@
         L.circle([oldCoord.lat, oldCoord.lng], circleProps).addTo(mymap);
     }
 
-    var lastID = 1;
     xhrcallback = function(xhr) {
-        console.log('xhrcallback called.');
-        if (xhr.readyState === 4 && xhr.status == 200) {
+        console.log('xhrcallback called.', xhr.readyState, xhr.status);
+        if (xhr.readyState === XMLHttpRequest.DONE && xhr.status == 200) {
             const response = xhr.response;
             if (response['geo']) {
                 const features = response['geo']['features'];
-                const newLastID = response['last'];
                 const lastfeature = features[0];
+                console.log(`xhrcallback: ${features.length} elements received.`);
                 // Backfill old circles.
                 if (features.length > 0) {
                     for (i = 1; i < features.length; i++) {
@@ -58,7 +57,6 @@
                 console.log('Received update:', coords, 'last:', response);
                 setCurrentLocation(coords[1], coords[0]);
                 mymap.setView([coords[1], coords[0]], mymap.getZoom());
-                window.lastID = newLastID;
             }
 
             // Install next XHR.
@@ -66,12 +64,20 @@
         }
     };
 
+
+    backfill = function(args) {
+        xhr = new XMLHttpRequest();
+        var url = `/geo/${client}/retrieve/last?secret=${secret}&limit=256`;
+        console.log('Requesting URL (backfill) ' + url);
+        xhr.responseType = 'json';
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function() { xhrcallback(xhr); };
+        xhr.send();
+    }
+
     waitforupdate = function() {
         xhr = new XMLHttpRequest();
         var url = `/geo/${client}/retrieve/live?secret=${secret}&timeout=50`;
-        if (lastID > 0) {
-            url += `&last=${lastID}`;
-        }
         console.log('Requesting URL ' + url);
         xhr.responseType = 'json';
         xhr.open('GET', url, true);
@@ -79,7 +85,8 @@
         xhr.send();
     }
 
-    waitforupdate();
+    // Once data is backfilled, we wait for the update.
+    backfill();
 
     </script>
 
