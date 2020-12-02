@@ -369,6 +369,7 @@ fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Connect
         }
 
         // Drain notifications from the database.
+        // Also provide updated rows to the client.
         let notifications = db.notifications();
         let mut iter = notifications.timeout_iter(time::Duration::new(0, TICK_MILLIS * 1_000_000));
         let mut count = 0;
@@ -376,6 +377,8 @@ fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Connect
             let payload = notification.payload;
             unlisten(&db, &payload).ok();
 
+            // One query per listening client as secrets may be different.
+            // These queries use the primary key index returning one row only and will be quite fast.
             for request in clients.remove(&payload).unwrap_or(vec![]) {
                 if let Some((geo, last)) =
                     check_for_new_rows(&db, &payload, &request.secret, &None, &Some(1))
