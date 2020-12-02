@@ -1,7 +1,5 @@
-* notify via dynamic channels? static channels? polling?
-* password/secret protection
+GENERAL
 
 FEATURES
 
-* live map + map history (UI)
 * GPX/json export (with UI + API)
