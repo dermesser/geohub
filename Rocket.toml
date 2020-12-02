@@ -3,10 +3,10 @@ geohub = { url = "postgresql://lbo:pglbo@localhost/lbo", pool_size = 4 }
 # Majority of workers is expected to be waiting for updates.
 
 [development]
-workers = 16
+workers = 8
 
 [production]
 log = "normal"
 address = "::1"
 port = 8000
-workers = 8
+workers = 16
