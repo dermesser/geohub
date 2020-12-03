@@ -146,6 +146,8 @@ CloudMade.
 
 ## Usage
 
+![Map data © OpenStreetMap contributors, CC-BY-SA, Imagery © MapBox](screenshot1.png)
+
 If you want to go on a difficult hike (though one with nice mobile data
 coverage) and keep your worried parents up to date, do this:
 
