@@ -55,19 +55,19 @@ fn retrieve_live(
 }
 
 /// Retrieve GeoJSON data.
-#[rocket::get("/geo/<name>/retrieve/json?<secret>&<from>&<to>&<limit>&<last>")]
+#[rocket::get("/geo/<client>/retrieve/json?<secret>&<from>&<to>&<limit>&<last>")]
 fn retrieve_json(
     db: db::DBConn,
-    name: String,
+    client: String,
     secret: Option<String>,
     from: Option<String>,
     to: Option<String>,
     limit: Option<i64>,
     last: Option<i32>,
 ) -> http::GeoHubResponse {
-    if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
+    if !ids::name_and_secret_acceptable(client.as_str(), secret.as_ref().map(|s| s.as_str())) {
         return http::bad_request(
-            "You have supplied an invalid secret or name. Both must be ASCII alphanumeric strings."
+            "You have supplied an invalid secret or client. Both must be ASCII alphanumeric strings."
                 .into(),
         );
     }
@@ -83,7 +83,7 @@ fn retrieve_json(
         .unwrap_or(chrono::Utc::now());
     let limit = limit.unwrap_or(16384);
 
-    let result = db.retrieve_json(name.as_str(), from_ts, to_ts, &secret, limit, last);
+    let result = db.retrieve_json(client.as_str(), from_ts, to_ts, &secret, limit, last);
     match result {
         Ok(json) => http::return_json(&json),
         Err(e) => http::server_error(e.to_string()),
