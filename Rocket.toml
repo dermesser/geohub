@@ -1,6 +1,5 @@
 [global.databases]
-geohub = { url = "postgresql://lbo:pglbo@localhost/lbo", pool_size = 4 }
-# Majority of workers is expected to be waiting for updates.
+geohub = { url = "postgresql://user:pass@localhost/database", pool_size = 4 }
 
 [development]
 workers = 8
@@ -9,4 +8,5 @@ workers = 8
 log = "normal"
 address = "::1"
 port = 8000
+# Majority of workers is expected to be waiting for updates.
 workers = 16
