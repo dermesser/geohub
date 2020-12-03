@@ -12,26 +12,20 @@ use std::time;
 use postgres;
 use rocket;
 
-#[rocket_contrib::database("geohub")]
-struct DBConn(postgres::Connection);
-
 /// Almost like retrieve/json, but sorts in descending order and doesn't work with intervals (only
 /// limit). Used for backfilling recent points in the UI.
 #[rocket::get("/geo/<name>/retrieve/last?<secret>&<last>&<limit>")]
 fn retrieve_last(
-    db: DBConn,
+    db: db::DBConn,
     name: String,
     secret: Option<String>,
     last: Option<i32>,
     limit: Option<i64>,
 ) -> rocket_contrib::json::Json<LiveUpdate> {
-    if let Some((geojson, newlast)) = db::check_for_new_rows(
-        &db.0,
-        &name,
-        secret.as_ref().map(|s| s.as_str()),
-        &last,
-        &limit,
-    ) {
+    let db = db::DBQuery(&db.0);
+    if let Some((geojson, newlast)) =
+        db.check_for_new_rows(&name, secret.as_ref().map(|s| s.as_str()), &last, &limit)
+    {
         return rocket_contrib::json::Json(LiveUpdate {
             typ: "GeoHubUpdate".into(),
             last: Some(newlast),
@@ -106,13 +100,14 @@ fn retrieve_live(
 /// Retrieve GeoJSON data.
 #[rocket::get("/geo/<name>/retrieve/json?<secret>&<from>&<to>&<limit>")]
 fn retrieve_json(
-    db: DBConn,
+    db: db::DBConn,
     name: String,
     secret: Option<String>,
     from: Option<String>,
     to: Option<String>,
     limit: Option<i64>,
 ) -> rocket_contrib::json::Json<types::GeoJSON> {
+    let db = db::DBQuery(&db.0);
     let from_ts =
         from.and_then(util::flexible_timestamp_parse)
             .unwrap_or(chrono::DateTime::from_utc(
@@ -123,24 +118,14 @@ fn retrieve_json(
         .and_then(util::flexible_timestamp_parse)
         .unwrap_or(chrono::Utc::now());
     let limit = limit.unwrap_or(16384);
+    let secret = secret.as_ref().map(|s| s.as_str()).unwrap_or("");
 
-    let mut returnable = types::GeoJSON::new();
-    let stmt = db.0.prepare_cached(
-        r"SELECT t, lat, long, spd, ele FROM geohub.geodata
-        WHERE (client = $1) and (t between $2 and $3) AND (secret = public.digest($4, 'sha256') or secret is null)
-        ORDER BY t ASC
-        LIMIT $5").unwrap(); // Must succeed.
-    let rows = stmt.query(&[&name, &from_ts, &to_ts, &secret, &limit]);
-    if let Ok(rows) = rows {
-        returnable.reserve_features(rows.len());
-        for row in rows.iter() {
-            let (ts, lat, long, spd, ele) =
-                (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4));
-            returnable.push_feature(types::geofeature_from_row(ts, lat, long, spd, ele));
-        }
+    if let Ok(json) = db.retrieve_json(name.as_str(), from_ts, to_ts, secret, limit) {
+        return rocket_contrib::json::Json(json);
     }
 
-    rocket_contrib::json::Json(returnable)
+    // Todo: Use custom database error return
+    rocket_contrib::json::Json(types::GeoJSON::new())
 }
 
 /// Ingest geo data.
@@ -149,7 +134,7 @@ fn retrieve_json(
 /// secret can be used to protect points.
 #[rocket::post("/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>&<secret>")]
 fn log(
-    db: DBConn,
+    db: db::DBConn,
     name: String,
     lat: f64,
     longitude: f64,
@@ -196,7 +181,7 @@ fn main() {
     };
 
     rocket::ignite()
-        .attach(DBConn::fairing())
+        .attach(db::DBConn::fairing())
         .manage(send)
         .attach(rocket::fairing::AdHoc::on_attach(
             "Database Notifications",

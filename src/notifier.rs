@@ -40,6 +40,7 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
     const TICK_MILLIS: u32 = 500;
 
     let mut clients: HashMap<String, Vec<NotifyRequest>> = HashMap::new();
+    let db = db::DBQuery(&db);
 
     fn listen(db: &postgres::Connection, client: &str, secret: &str) -> postgres::Result<u64> {
         let n = db
@@ -65,7 +66,7 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
                 let secret = nrq.secret.as_ref().map(|s| s.as_str()).unwrap_or("");
                 let chan_name = ids::channel_name(nrq.client.as_str(), secret);
                 if !clients.contains_key(&chan_name) {
-                    listen(&db, &nrq.client, secret).ok();
+                    listen(db.0, &nrq.client, secret).ok();
                 }
                 clients.entry(chan_name).or_insert(vec![]).push(nrq);
             } else {
@@ -75,18 +76,18 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
 
         // Drain notifications from the database.
         // Also provide updated rows to the client.
-        let notifications = db.notifications();
+        let notifications = db.0.notifications();
         let mut iter = notifications.timeout_iter(time::Duration::new(0, TICK_MILLIS * 1_000_000));
         let mut count = 0;
 
         while let Ok(Some(notification)) = iter.next() {
             let chan = notification.channel;
             let (client, secret) = ids::client_secret(chan.as_str());
-            unlisten(&db, &chan).ok();
+            unlisten(db.0, &chan).ok();
 
             // These queries use the primary key index returning one row only and will be quite fast.
             // Still: One query per client.
-            let rows = db::check_for_new_rows(&db, client, Some(secret), &None, &Some(1));
+            let rows = db.check_for_new_rows(client, Some(secret), &None, &Some(1));
             if let Some((geo, last)) = rows {
                 for request in clients.remove(&chan).unwrap_or(vec![]) {
                     request
