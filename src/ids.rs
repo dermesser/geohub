@@ -21,4 +21,3 @@ pub fn client_secret(channel_name: &str) -> (&str, &str) {
     assert!(parts.len() == 4);
     return (parts[2], parts[3]);
 }
-

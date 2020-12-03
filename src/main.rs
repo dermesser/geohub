@@ -8,13 +8,13 @@ mod types;
 mod util;
 
 use std::sync::{mpsc, Arc, Mutex};
-use std::time;
 
 use postgres;
 use rocket;
 
-/// Almost like retrieve/json, but sorts in descending order and doesn't work with intervals (only
-/// limit). Used for backfilling recent points in the UI.
+/// Almost like retrieve/json, but sorts in descending order, doesn't work with intervals (only
+/// limit), and returns a LiveUpdate.
+/// Used for backfilling recent points in the UI.
 #[rocket::get("/geo/<name>/retrieve/last?<secret>&<last>&<limit>")]
 fn retrieve_last(
     db: db::DBConn,
@@ -22,40 +22,26 @@ fn retrieve_last(
     secret: Option<String>,
     last: Option<i32>,
     limit: Option<i64>,
-) -> rocket_contrib::json::Json<LiveUpdate> {
+) -> rocket_contrib::json::Json<types::LiveUpdate> {
     let db = db::DBQuery(&db.0);
     if let Some((geojson, newlast)) =
         db.check_for_new_rows(&name, secret.as_ref().map(|s| s.as_str()), &last, &limit)
     {
-        return rocket_contrib::json::Json(LiveUpdate {
-            typ: "GeoHubUpdate".into(),
-            last: Some(newlast),
-            geo: Some(geojson),
-            error: None,
-        });
+        rocket_contrib::json::Json(types::LiveUpdate::new(Some(newlast), Some(geojson), None))
+    } else {
+        rocket_contrib::json::Json(types::LiveUpdate::new(
+            last,
+            None,
+            Some("No rows returned".into()),
+        ))
     }
-    return rocket_contrib::json::Json(LiveUpdate {
-        typ: "GeoHubUpdate".into(),
-        last: last,
-        geo: None,
-        error: Some("No new rows returned".into()),
-    });
-}
-
-#[derive(serde::Serialize, Debug)]
-struct LiveUpdate {
-    #[serde(rename = "type")]
-    typ: String, // always "GeoHubUpdate"
-    last: Option<i32>,
-    geo: Option<types::GeoJSON>,
-    error: Option<String>,
 }
 
 /// Wait for an update.
 /// Only one point is returned. To retrieve a history of points, call retrieve_last.
 #[rocket::get("/geo/<name>/retrieve/live?<secret>&<timeout>")]
 fn retrieve_live(
-    notify_manager: rocket::State<notifier::SendableSender<notifier::NotifyRequest>>,
+    notify_manager: rocket::State<notifier::NotifyManager>,
     name: String,
     secret: Option<String>,
     timeout: Option<u64>,
@@ -67,33 +53,7 @@ fn retrieve_live(
         );
     }
 
-    // Ask the notify thread to tell us when there is an update for this client name and secret.
-    let (send, recv) = mpsc::channel();
-    let send = notifier::SendableSender {
-        sender: Arc::new(Mutex::new(send)),
-    };
-
-    let req = notifier::NotifyRequest {
-        client: name.clone(),
-        secret: secret,
-        respond: send,
-    };
-    notify_manager.send(req).unwrap();
-
-    if let Ok(response) = recv.recv_timeout(time::Duration::new(timeout.unwrap_or(30), 0)) {
-        return http::return_json(&LiveUpdate {
-            typ: "GeoHubUpdate".into(),
-            last: response.last,
-            geo: response.geo,
-            error: None,
-        });
-    }
-    return http::return_json(&LiveUpdate {
-        typ: "GeoHubUpdate".into(),
-        last: None,
-        geo: None,
-        error: None,
-    });
+    http::return_json(&notify_manager.wait_for_notification(name, secret, timeout))
 }
 
 /// Retrieve GeoJSON data.
@@ -188,9 +148,9 @@ fn assets(
 
 fn main() {
     let (send, recv) = mpsc::channel();
-    let send = notifier::SendableSender {
+    let send = notifier::NotifyManager(notifier::SendableSender {
         sender: Arc::new(Mutex::new(send)),
-    };
+    });
 
     rocket::ignite()
         .attach(db::DBConn::fairing())

@@ -24,4 +24,3 @@ pub fn flexible_timestamp_parse(ts: String) -> Option<chrono::DateTime<chrono::U
     }
     None
 }
-

@@ -1,12 +1,11 @@
-
 use crate::db;
 use crate::ids;
 use crate::types;
 
+use fallible_iterator::FallibleIterator;
 use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex};
 use std::time;
-use fallible_iterator::FallibleIterator;
 
 /// Request of a web client thread to the notifier thread.
 pub struct NotifyRequest {
@@ -32,6 +31,35 @@ impl<T> SendableSender<T> {
     pub fn send(&self, arg: T) -> Result<(), mpsc::SendError<T>> {
         let s = self.sender.lock().unwrap();
         s.send(arg)
+    }
+}
+
+pub struct NotifyManager(pub SendableSender<NotifyRequest>);
+
+impl NotifyManager {
+    pub fn wait_for_notification(
+        &self,
+        client: String,
+        secret: Option<String>,
+        timeout: Option<u64>,
+    ) -> types::LiveUpdate {
+        let (send, recv) = mpsc::channel();
+        let send = SendableSender {
+            sender: Arc::new(Mutex::new(send)),
+        };
+
+        let req = NotifyRequest {
+            client: client,
+            secret: secret,
+            respond: send,
+        };
+        self.0.send(req).unwrap();
+
+        if let Ok(response) = recv.recv_timeout(time::Duration::new(timeout.unwrap_or(30), 0)) {
+            types::LiveUpdate::new(response.last, response.geo, None)
+        } else {
+            types::LiveUpdate::new(None, None, Some("timeout, try again".into()))
+        }
     }
 }
 
@@ -118,4 +146,3 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
         }
     }
 }
-

@@ -1,4 +1,3 @@
-
 /// Non-JSON plain point representation.
 #[derive(Debug, Clone)]
 pub struct GeoPoint {
@@ -7,6 +6,26 @@ pub struct GeoPoint {
     pub spd: Option<f64>,
     pub ele: Option<f64>,
     pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(serde::Serialize, Debug)]
+pub struct LiveUpdate {
+    #[serde(rename = "type")]
+    typ: String, // always "GeoHubUpdate"
+    last: Option<i32>,
+    geo: Option<GeoJSON>,
+    error: Option<String>,
+}
+
+impl LiveUpdate {
+    pub fn new(last: Option<i32>, geo: Option<GeoJSON>, err: Option<String>) -> LiveUpdate {
+        LiveUpdate {
+            typ: "GeoHubUpdate".into(),
+            last: last,
+            geo: geo,
+            error: err,
+        }
+    }
 }
 
 /// Fetch geodata as JSON.
@@ -42,7 +61,10 @@ pub struct GeoJSON {
 
 impl GeoJSON {
     pub fn new() -> GeoJSON {
-        GeoJSON { typ: "FeatureCollection".into(), features: vec![] }
+        GeoJSON {
+            typ: "FeatureCollection".into(),
+            features: vec![],
+        }
     }
     pub fn reserve_features(&mut self, cap: usize) {
         self.features.reserve(cap);
@@ -72,4 +94,3 @@ pub fn geofeature_from_row(
         },
     }
 }
-

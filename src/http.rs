@@ -1,13 +1,12 @@
-
 use rocket::response::Responder;
 
 #[derive(Responder)]
 pub enum GeoHubResponse {
-    #[response(status=200, content_type="json")]
+    #[response(status = 200, content_type = "json")]
     Ok(String),
-    #[response(status=400)]
+    #[response(status = 400)]
     BadRequest(String),
-    #[response(status=500)]
+    #[response(status = 500)]
     ServerError(String),
 }
 
