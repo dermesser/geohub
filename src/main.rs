@@ -23,6 +23,15 @@ fn retrieve_last(
     last: Option<i32>,
     limit: Option<i64>,
 ) -> rocket_contrib::json::Json<types::LiveUpdate> {
+    let secret = if let Some(secret) = secret {
+        if secret.is_empty() {
+            None
+        } else {
+            Some(secret)
+        }
+    } else {
+        secret
+    };
     let db = db::DBQuery(&db.0);
     if let Some((geojson, newlast)) = db.check_for_new_rows(&name, &secret, &last, &limit) {
         rocket_contrib::json::Json(types::LiveUpdate::new(Some(newlast), Some(geojson), None))
@@ -50,6 +59,15 @@ fn retrieve_live(
                 .into(),
         );
     }
+    let secret = if let Some(secret) = secret {
+        if secret.is_empty() {
+            None
+        } else {
+            Some(secret)
+        }
+    } else {
+        secret
+    };
 
     http::return_json(&notify_manager.wait_for_notification(name, secret, timeout))
 }
@@ -71,6 +89,15 @@ fn retrieve_json(
                 .into(),
         );
     }
+    let secret = if let Some(secret) = secret {
+        if secret.is_empty() {
+            None
+        } else {
+            Some(secret)
+        }
+    } else {
+        secret
+    };
     let db = db::DBQuery(&db.0);
     let from_ts =
         from.and_then(util::flexible_timestamp_parse)
