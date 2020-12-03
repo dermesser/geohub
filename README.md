@@ -33,7 +33,7 @@ about where you were yesterday. You can leave your `client` string the same and
 use a new `secret` that you give to your friend; they can now only see points
 logged with this secret.
 
-* `/geo/<client>/log?lat=<latitude>&longitude=<longitude>&time=<time>&s=<speed>&ele=<elevation>&secret=<secret>`
+* `POST` `/geo/<client>/log?lat=<latitude>&longitude=<longitude>&time=<time>&s=<speed>&ele=<elevation>&secret=<secret>`
   * Log a new point.
   * `latitude`, `longitude`: Geographical position, in decimal degrees (note:
       may be extended later). **Required**.
@@ -42,11 +42,13 @@ logged with this secret.
   * `speed`: Speed in km/h (usually). If you decide to always use m/s, you are
   free to do so. **Optional**.
   * `elevation`: Elevation in meters. **Optional**.
+  * A body -- encoded in whatever content-type -- is attached as `note` to the
+  point and returned as property of GeoJSON points later.
   * Usually returns code **200** except for server errors (500) or malformed inputs (400).
-* `/geo/assets/...`
+* `GET` `/geo/assets/...`
   * Static file serving. The `assets` directory should be deployed in the
   current working directory from which the server is run.
-* `/geo/<client>/retrieve/json?secret=<secret>&from=<from_timestamp>&to=<to_timestamp>&limit=<maximum
+* `GET` `/geo/<client>/retrieve/json?secret=<secret>&from=<from_timestamp>&to=<to_timestamp>&limit=<maximum
 number of entries returned>&last=<id of last known entry>`
   * Fetch geo data as GeoJSON object.
   * `from`, `to`: Timestamp range. For best results, supply ISO 8601 timestamps,
@@ -58,7 +60,7 @@ number of entries returned>&last=<id of last known entry>`
   know. GeoHub will only return events newer than this. The IDs used here are
   returned as property `id` in the GeoJSON `Feature`s.
   * Returns a GeoJSON object.
-* `/geo/<client>/retrieve/last?secret=<secret>&last=<last ID>&limit=<max
+* `GET` `/geo/<client>/retrieve/last?secret=<secret>&last=<last ID>&limit=<max
 entries>`
   * Fetch most recent points for the `client`. See `/geo/<client>/retrieve/json`
   above for descriptions of the other parameters.
@@ -94,7 +96,7 @@ entries>`
 }
 ```
 
-* `/geo/<client>/retrieve/live?secret=<secret>&timeout=<timeout in sec>`
+* `GET` `/geo/<client>/retrieve/live?secret=<secret>&timeout=<timeout in sec>`
   * Wait at most `timeout` seconds for events from `client` with the given
   `secret`. This is a "hanging" request endpoint, returning after `timeout`
   seconds or any time that a new point has been logged. This is useful for
