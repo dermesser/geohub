@@ -42,8 +42,8 @@ logged with this secret.
   * `speed`: Speed in km/h (usually). If you decide to always use m/s, you are
   free to do so. **Optional**.
   * `elevation`: Elevation in meters. **Optional**.
-  * A body -- encoded in whatever content-type -- is attached as `note` to the
-  point and returned as property of GeoJSON points later.
+  * A body -- if present and encoded in whatever content-type -- is attached as `note` to the
+  point and returned as property `note` of GeoJSON points later.
   * Usually returns code **200** except for server errors (500) or malformed inputs (400).
 * `GET` `/geo/assets/...`
   * Static file serving. The `assets` directory should be deployed in the
@@ -80,7 +80,8 @@ entries>`
           "time": "2020-12-03T15:42:40.010325Z",
           "altitude": 40,
           "speed": 22,
-          "id": 1205
+          "id": 1205,
+          "note": "A happy little note",
         },
         "geometry": {
           "type": "Point",
