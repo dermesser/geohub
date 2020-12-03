@@ -1,6 +1,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 mod db;
+mod http;
 mod ids;
 mod notifier;
 mod types;
@@ -58,14 +59,12 @@ fn retrieve_live(
     name: String,
     secret: Option<String>,
     timeout: Option<u64>,
-) -> rocket_contrib::json::Json<LiveUpdate> {
+) -> http::GeoHubResponse {
     if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
-        return rocket_contrib::json::Json(LiveUpdate {
-            typ: "GeoHubUpdate".into(),
-            last: None,
-            geo: None,
-            error: Some("You have supplied an invalid secret or name. Both must be ASCII alphanumeric strings.".into()),
-        });
+        return http::bad_request(
+            "You have supplied an invalid secret or name. Both must be ASCII alphanumeric strings."
+                .into(),
+        );
     }
 
     // Ask the notify thread to tell us when there is an update for this client name and secret.
@@ -82,18 +81,18 @@ fn retrieve_live(
     notify_manager.send(req).unwrap();
 
     if let Ok(response) = recv.recv_timeout(time::Duration::new(timeout.unwrap_or(30), 0)) {
-        return rocket_contrib::json::Json(LiveUpdate {
+        return http::return_json(&LiveUpdate {
             typ: "GeoHubUpdate".into(),
             last: response.last,
             geo: response.geo,
             error: None,
         });
     }
-    return rocket_contrib::json::Json(LiveUpdate {
+    return http::return_json(&LiveUpdate {
         typ: "GeoHubUpdate".into(),
         last: None,
         geo: None,
-        error: Some("No new rows returned".into()),
+        error: None,
     });
 }
 
@@ -106,7 +105,13 @@ fn retrieve_json(
     from: Option<String>,
     to: Option<String>,
     limit: Option<i64>,
-) -> rocket_contrib::json::Json<types::GeoJSON> {
+) -> http::GeoHubResponse {
+    if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
+        return http::bad_request(
+            "You have supplied an invalid secret or name. Both must be ASCII alphanumeric strings."
+                .into(),
+        );
+    }
     let db = db::DBQuery(&db.0);
     let from_ts =
         from.and_then(util::flexible_timestamp_parse)
@@ -120,12 +125,11 @@ fn retrieve_json(
     let limit = limit.unwrap_or(16384);
     let secret = secret.as_ref().map(|s| s.as_str()).unwrap_or("");
 
-    if let Ok(json) = db.retrieve_json(name.as_str(), from_ts, to_ts, secret, limit) {
-        return rocket_contrib::json::Json(json);
+    let result = db.retrieve_json(name.as_str(), from_ts, to_ts, secret, limit);
+    match result {
+        Ok(json) => http::return_json(&json),
+        Err(e) => http::server_error(e.to_string()),
     }
-
-    // Todo: Use custom database error return
-    rocket_contrib::json::Json(types::GeoJSON::new())
 }
 
 /// Ingest geo data.
@@ -142,26 +146,34 @@ fn log(
     time: Option<String>,
     s: Option<f64>,
     ele: Option<f64>,
-) -> rocket::http::Status {
+) -> http::GeoHubResponse {
+    let db = db::DBQuery(&db.0);
     // Check that secret and client name are legal.
     if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
-        return rocket::http::Status::NotAcceptable;
+        return http::bad_request(
+            "You have supplied an invalid secret or name. Both must be ASCII alphanumeric strings."
+                .into(),
+        );
     }
     let mut ts = chrono::Utc::now();
     if let Some(time) = time {
         ts = util::flexible_timestamp_parse(time).unwrap_or(ts);
     }
-    let stmt = db.0.prepare_cached("INSERT INTO geohub.geodata (client, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'))").unwrap();
-    let channel = format!(
-        "NOTIFY {}, '{}'",
-        ids::channel_name(name.as_str(), secret.as_ref().unwrap_or(&"".into())),
-        name
-    );
-    let notify = db.0.prepare_cached(channel.as_str()).unwrap();
-    stmt.execute(&[&name, &lat, &longitude, &s, &ts, &ele, &secret])
-        .unwrap();
-    notify.execute(&[]).unwrap();
-    rocket::http::Status::Ok
+    let point = types::GeoPoint {
+        lat: lat,
+        long: longitude,
+        time: ts,
+        spd: s,
+        ele: ele,
+    };
+    if let Err(e) = db.log_geopoint(
+        name.as_str(),
+        secret.as_ref().map(|s| s.as_str()).unwrap_or(""),
+        &point,
+    ) {
+        return http::server_error(e.to_string());
+    }
+    http::GeoHubResponse::Ok("".into())
 }
 
 /// Serve static files.

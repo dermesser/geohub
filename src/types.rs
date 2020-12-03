@@ -1,4 +1,14 @@
 
+/// Non-JSON plain point representation.
+#[derive(Debug, Clone)]
+pub struct GeoPoint {
+    pub lat: f64,
+    pub long: f64,
+    pub spd: Option<f64>,
+    pub ele: Option<f64>,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
 /// Fetch geodata as JSON.
 ///
 #[derive(serde::Serialize, Debug, Clone)]

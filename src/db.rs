@@ -1,3 +1,4 @@
+use crate::ids;
 use crate::types;
 
 /// Managed by Rocket.
@@ -31,6 +32,29 @@ impl<'a> DBQuery<'a> {
             returnable.push_feature(types::geofeature_from_row(ts, lat, long, spd, ele));
         }
         Ok(returnable)
+    }
+
+    pub fn log_geopoint(
+        &self,
+        name: &str,
+        secret: &str,
+        point: &types::GeoPoint,
+    ) -> Result<(), postgres::Error> {
+        let stmt = self.0.prepare_cached("INSERT INTO geohub.geodata (client, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'))").unwrap();
+        let channel = format!("NOTIFY {}, '{}'", ids::channel_name(name, secret), name);
+        let notify = self.0.prepare_cached(channel.as_str()).unwrap();
+        stmt.execute(&[
+            &name,
+            &point.lat,
+            &point.long,
+            &point.spd,
+            &point.time,
+            &point.ele,
+            &secret,
+        ])
+        .unwrap();
+        notify.execute(&[]).unwrap();
+        Ok(())
     }
 
     /// Queries for at most `limit` rows since entry ID `last`.
