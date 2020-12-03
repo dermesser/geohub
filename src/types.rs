@@ -3,24 +3,43 @@
 ///
 #[derive(serde::Serialize, Debug, Clone)]
 pub struct GeoProperties {
-    pub time: chrono::DateTime<chrono::Utc>,
-    pub altitude: Option<f64>,
-    pub speed: Option<f64>,
+    time: chrono::DateTime<chrono::Utc>,
+    altitude: Option<f64>,
+    speed: Option<f64>,
 }
 
 #[derive(serde::Serialize, Debug, Clone)]
 pub struct GeoGeometry {
     #[serde(rename = "type")]
-    pub typ: String, // always "Point"
-    pub coordinates: Vec<f64>, // always [long, lat]
+    typ: String, // always "Point"
+    coordinates: Vec<f64>, // always [long, lat]
 }
 
 #[derive(serde::Serialize, Debug, Clone)]
 pub struct GeoFeature {
     #[serde(rename = "type")]
-    pub typ: String, // always "Feature"
-    pub properties: GeoProperties,
-    pub geometry: GeoGeometry,
+    typ: String, // always "Feature"
+    properties: GeoProperties,
+    geometry: GeoGeometry,
+}
+
+#[derive(serde::Serialize, Debug, Clone)]
+pub struct GeoJSON {
+    #[serde(rename = "type")]
+    typ: String, // always "FeatureCollection"
+    features: Vec<GeoFeature>,
+}
+
+impl GeoJSON {
+    pub fn new() -> GeoJSON {
+        GeoJSON { typ: "FeatureCollection".into(), features: vec![] }
+    }
+    pub fn reserve_features(&mut self, cap: usize) {
+        self.features.reserve(cap);
+    }
+    pub fn push_feature(&mut self, feat: GeoFeature) {
+        self.features.push(feat);
+    }
 }
 
 pub fn geofeature_from_row(
@@ -44,9 +63,3 @@ pub fn geofeature_from_row(
     }
 }
 
-#[derive(serde::Serialize, Debug, Clone)]
-pub struct GeoJSON {
-    #[serde(rename = "type")]
-    pub typ: String, // always "FeatureCollection"
-    pub features: Vec<GeoFeature>,
-}

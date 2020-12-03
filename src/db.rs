@@ -8,10 +8,7 @@ pub fn check_for_new_rows(
     last: &Option<i32>,
     limit: &Option<i64>,
 ) -> Option<(types::GeoJSON, i32)> {
-    let mut returnable = types::GeoJSON {
-        typ: "FeatureCollection".into(),
-        features: vec![],
-    };
+    let mut returnable = types::GeoJSON::new();
     let check_for_new = db.prepare_cached(
         r"SELECT id, t, lat, long, spd, ele FROM geohub.geodata
         WHERE (client = $1) and (id > $2) AND (secret = public.digest($3, 'sha256') or secret is null)
@@ -25,7 +22,7 @@ pub fn check_for_new_rows(
     if let Ok(rows) = rows {
         // If there are unknown entries, return those.
         if rows.len() > 0 {
-            returnable.features = Vec::with_capacity(rows.len());
+            returnable.reserve_features(rows.len());
             let mut last = 0;
 
             for row in rows.iter() {
@@ -37,9 +34,7 @@ pub fn check_for_new_rows(
                     row.get(4),
                     row.get(5),
                 );
-                returnable
-                    .features
-                    .push(types::geofeature_from_row(ts, lat, long, spd, ele));
+                returnable.push_feature(types::geofeature_from_row(ts, lat, long, spd, ele));
                 if id > last {
                     last = id;
                 }

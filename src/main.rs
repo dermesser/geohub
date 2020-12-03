@@ -4,6 +4,7 @@ mod db;
 mod ids;
 mod notifier;
 mod types;
+mod util;
 
 use std::sync::{mpsc, Arc, Mutex};
 use std::time;
@@ -11,33 +12,8 @@ use std::time;
 use postgres;
 use rocket;
 
-use chrono::TimeZone;
-
 #[rocket_contrib::database("geohub")]
 struct DBConn(postgres::Connection);
-
-/// Parse timestamps flexibly. Without any zone information, UTC is assumed.
-fn flexible_timestamp_parse(ts: String) -> Option<chrono::DateTime<chrono::Utc>> {
-    let fmtstrings = &[
-        "%Y-%m-%dT%H:%M:%S%.f%:z",
-        "%Y-%m-%dT%H:%M:%S%.fZ",
-        "%Y-%m-%d %H:%M:%S%.f",
-    ];
-    for fs in fmtstrings {
-        let (naive, withtz) = (
-            chrono::NaiveDateTime::parse_from_str(ts.as_str(), fs).ok(),
-            chrono::DateTime::parse_from_str(ts.as_str(), fs).ok(),
-        );
-        if let Some(p) = withtz {
-            return Some(p.with_timezone(&chrono::Utc));
-        }
-        if let Some(p) = naive {
-            let utcd = chrono::Utc.from_utc_datetime(&p);
-            return Some(utcd);
-        }
-    }
-    None
-}
 
 /// Almost like retrieve/json, but sorts in descending order and doesn't work with intervals (only
 /// limit). Used for backfilling recent points in the UI.
@@ -137,22 +113,18 @@ fn retrieve_json(
     to: Option<String>,
     limit: Option<i64>,
 ) -> rocket_contrib::json::Json<types::GeoJSON> {
-    let mut returnable = types::GeoJSON {
-        typ: "FeatureCollection".into(),
-        features: vec![],
-    };
-
-    let from_ts = from
-        .and_then(flexible_timestamp_parse)
-        .unwrap_or(chrono::DateTime::from_utc(
-            chrono::NaiveDateTime::from_timestamp(0, 0),
-            chrono::Utc,
-        ));
+    let from_ts =
+        from.and_then(util::flexible_timestamp_parse)
+            .unwrap_or(chrono::DateTime::from_utc(
+                chrono::NaiveDateTime::from_timestamp(0, 0),
+                chrono::Utc,
+            ));
     let to_ts = to
-        .and_then(flexible_timestamp_parse)
+        .and_then(util::flexible_timestamp_parse)
         .unwrap_or(chrono::Utc::now());
     let limit = limit.unwrap_or(16384);
 
+    let mut returnable = types::GeoJSON::new();
     let stmt = db.0.prepare_cached(
         r"SELECT t, lat, long, spd, ele FROM geohub.geodata
         WHERE (client = $1) and (t between $2 and $3) AND (secret = public.digest($4, 'sha256') or secret is null)
@@ -160,13 +132,11 @@ fn retrieve_json(
         LIMIT $5").unwrap(); // Must succeed.
     let rows = stmt.query(&[&name, &from_ts, &to_ts, &secret, &limit]);
     if let Ok(rows) = rows {
-        returnable.features = Vec::with_capacity(rows.len());
+        returnable.reserve_features(rows.len());
         for row in rows.iter() {
             let (ts, lat, long, spd, ele) =
                 (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4));
-            returnable
-                .features
-                .push(types::geofeature_from_row(ts, lat, long, spd, ele));
+            returnable.push_feature(types::geofeature_from_row(ts, lat, long, spd, ele));
         }
     }
 
@@ -194,7 +164,7 @@ fn log(
     }
     let mut ts = chrono::Utc::now();
     if let Some(time) = time {
-        ts = flexible_timestamp_parse(time).unwrap_or(ts);
+        ts = util::flexible_timestamp_parse(time).unwrap_or(ts);
     }
     let stmt = db.0.prepare_cached("INSERT INTO geohub.geodata (client, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'))").unwrap();
     let channel = format!(
