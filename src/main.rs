@@ -24,9 +24,7 @@ fn retrieve_last(
     limit: Option<i64>,
 ) -> rocket_contrib::json::Json<types::LiveUpdate> {
     let db = db::DBQuery(&db.0);
-    if let Some((geojson, newlast)) =
-        db.check_for_new_rows(&name, secret.as_ref().map(|s| s.as_str()), &last, &limit)
-    {
+    if let Some((geojson, newlast)) = db.check_for_new_rows(&name, &secret, &last, &limit) {
         rocket_contrib::json::Json(types::LiveUpdate::new(Some(newlast), Some(geojson), None))
     } else {
         rocket_contrib::json::Json(types::LiveUpdate::new(
@@ -84,9 +82,8 @@ fn retrieve_json(
         .and_then(util::flexible_timestamp_parse)
         .unwrap_or(chrono::Utc::now());
     let limit = limit.unwrap_or(16384);
-    let secret = secret.as_ref().map(|s| s.as_str()).unwrap_or("");
 
-    let result = db.retrieve_json(name.as_str(), from_ts, to_ts, secret, limit, last);
+    let result = db.retrieve_json(name.as_str(), from_ts, to_ts, &secret, limit, last);
     match result {
         Ok(json) => http::return_json(&json),
         Err(e) => http::server_error(e.to_string()),
@@ -127,11 +124,7 @@ fn log(
         spd: s,
         ele: ele,
     };
-    if let Err(e) = db.log_geopoint(
-        name.as_str(),
-        secret.as_ref().map(|s| s.as_str()).unwrap_or(""),
-        &point,
-    ) {
+    if let Err(e) = db.log_geopoint(name.as_str(), &secret, &point) {
         return http::server_error(e.to_string());
     }
     http::GeoHubResponse::Ok("".into())

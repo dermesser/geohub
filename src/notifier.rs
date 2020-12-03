@@ -115,7 +115,7 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
 
             // These queries use the primary key index returning one row only and will be quite fast.
             // Still: One query per client.
-            let rows = db.check_for_new_rows(client, Some(secret), &None, &Some(1));
+            let rows = db.check_for_new_rows(client, &Some(secret.into()), &None, &Some(1));
             if let Some((geo, last)) = rows {
                 for request in clients.remove(&chan).unwrap_or(vec![]) {
                     request

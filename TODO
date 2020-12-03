@@ -1,7 +1,5 @@
 GENERAL
 
-* Proper HTTP status for invalid secret/client
-
 FEATURES
 
 * GPX/json export (with UI + API)

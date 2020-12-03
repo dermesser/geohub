@@ -15,7 +15,7 @@ impl<'a> DBQuery<'a> {
         name: &str,
         from_ts: chrono::DateTime<chrono::Utc>,
         to_ts: chrono::DateTime<chrono::Utc>,
-        secret: &str,
+        secret: &Option<String>,
         limit: i64,
         last: Option<i32>,
     ) -> Result<types::GeoJSON, postgres::Error> {
@@ -38,11 +38,11 @@ impl<'a> DBQuery<'a> {
     pub fn log_geopoint(
         &self,
         name: &str,
-        secret: &str,
+        secret: &Option<String>,
         point: &types::GeoPoint,
     ) -> Result<(), postgres::Error> {
         let stmt = self.0.prepare_cached("INSERT INTO geohub.geodata (client, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'))").unwrap();
-        let channel = format!("NOTIFY {}, '{}'", ids::channel_name(name, secret), name);
+        let channel = format!("NOTIFY {}, '{}'", ids::channel_name(name, secret.as_ref().unwrap_or(&"".into()).as_str()), name);
         let notify = self.0.prepare_cached(channel.as_str()).unwrap();
         stmt.execute(&[
             &name,
@@ -62,7 +62,7 @@ impl<'a> DBQuery<'a> {
     pub fn check_for_new_rows(
         &self,
         name: &str,
-        secret: Option<&str>,
+        secret: &Option<String>,
         last: &Option<i32>,
         limit: &Option<i64>,
     ) -> Option<(types::GeoJSON, i32)> {
