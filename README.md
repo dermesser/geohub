@@ -108,3 +108,54 @@ entries>`
   * If no new point has arrived in time, a `LiveUpdate` with `null` entries for
   `geo` and `last` is returned.
 
+## Installation
+
+Installing GeoHub is quite easy. You need
+
+* a PostgreSQL server
+* (optional) a reverse proxy in front
+
+1. Set up a database with the supplied `pgsql_schema.sql`. It will install the
+   elements into the `geohub` schema. Currently, this is a very small schema.
+   Make sure that the `pgcrypto` extension is enabled in your database.
+   `PostGIS` is not required.
+1. Configure the database connection in `Rocket.toml`. Rocket.rs usually
+   connects to PostgreSQL via localhost/::1, so make sure that this is allowed
+   by modifying `pg_hba.conf` if needed.
+1. If you want TLS or already have a server on port 80/443, configure your main
+   webserver to proxy to GeoHub. For example, in nginx you can achieve this very
+   easily:
+
+```
+# Put this in an existing server { } block.
+
+    # Geohub
+    #
+    # This will strip the /geo/ prefix, so add it back below. Adapt to your
+    # preferred URL scheme.
+    location /geo/ {
+        proxy_pass http://localhost:8000/geo/;
+    }
+```
+
+This also allows you to immediately use the `livemap` app at
+`https://yourhost.com/geo/assets/livemap.html?client=<yourclient>&secret=verysecret`,
+which consists of a single HTML page, a CSS file, and the leaflet.js library
+(which is included). - latter is (c) 2010-2019 Vladimir Agafonkin, (c) 2010-2011
+CloudMade.
+
+## Usage
+
+If you want to go on a difficult hike (though one with nice mobile data
+coverage) and keep your worried parents up to date, do this:
+
+1. Install the [`GPSLogger` app](https://github.com/mendhak/gpslogger). It is
+   the only one I know of that has the kind of feature required for GeoHub.
+1. Configure the *Custom URL* feature to your URL. By default, you only
+   (optionally) need to add a secret and of course your host and URL part.
+1. Start logging, and pass the appropriate link to the livemap
+   (`https://yourhost.com/geo/assets/livemap.html?client=<yourclient>&secret=verysecret`)
+   to any concerned relatives. If you configure GPSLogger to log every few
+   seconds, it will work best. Latency between a point reaching your server and
+   the live map being updated will generally be way less than half a second.
+
