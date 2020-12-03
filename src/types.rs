@@ -6,6 +6,7 @@ pub struct GeoPoint {
     pub spd: Option<f64>,
     pub ele: Option<f64>,
     pub time: chrono::DateTime<chrono::Utc>,
+    pub note: Option<String>,
 }
 
 #[derive(serde::Serialize, Debug)]
@@ -35,14 +36,17 @@ pub struct GeoProperties {
     time: chrono::DateTime<chrono::Utc>,
     altitude: Option<f64>,
     speed: Option<f64>,
+    /// The unique ID of the point.
     id: Option<i32>,
+    /// An arbitrary note attached by the logging client.
+    note: Option<String>,
 }
 
 #[derive(serde::Serialize, Debug, Clone)]
 pub struct GeoGeometry {
     #[serde(rename = "type")]
     typ: String, // always "Point"
-    coordinates: Vec<f64>, // always [long, lat]
+    coordinates: (f64, f64), // always [long, lat]
 }
 
 #[derive(serde::Serialize, Debug, Clone)]
@@ -75,25 +79,19 @@ impl GeoJSON {
     }
 }
 
-pub fn geofeature_from_row(
-    id: Option<i32>,
-    ts: chrono::DateTime<chrono::Utc>,
-    lat: Option<f64>,
-    long: Option<f64>,
-    spd: Option<f64>,
-    ele: Option<f64>,
-) -> GeoFeature {
+pub fn geofeature_from_point(id: Option<i32>, point: GeoPoint) -> GeoFeature {
     GeoFeature {
         typ: "Feature".into(),
         properties: GeoProperties {
             id: id,
-            time: ts,
-            altitude: ele,
-            speed: spd,
+            time: point.time,
+            altitude: point.ele,
+            speed: point.spd,
+            note: point.note,
         },
         geometry: GeoGeometry {
             typ: "Point".into(),
-            coordinates: vec![long.unwrap_or(0.), lat.unwrap_or(0.)],
+            coordinates: (point.long, point.lat),
         },
     }
 }

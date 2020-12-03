@@ -21,16 +21,31 @@ impl<'a> DBQuery<'a> {
     ) -> Result<types::GeoJSON, postgres::Error> {
         let mut returnable = types::GeoJSON::new();
         let stmt = self.0.prepare_cached(
-            r"SELECT id, t, lat, long, spd, ele FROM geohub.geodata
+            r"SELECT id, t, lat, long, spd, ele, note FROM geohub.geodata
         WHERE (client = $1) and (t between $2 and $3) AND (secret = public.digest($4, 'sha256') or secret is null) AND (id > $5)
         ORDER BY t ASC
         LIMIT $6").unwrap(); // Must succeed.
         let rows = stmt.query(&[&name, &from_ts, &to_ts, &secret, &last.unwrap_or(0), &limit])?;
         returnable.reserve_features(rows.len());
         for row in rows.iter() {
-            let (id, ts, lat, long, spd, ele) =
-                (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4), row.get(5));
-            returnable.push_feature(types::geofeature_from_row(id, ts, lat, long, spd, ele));
+            let (id, ts, lat, long, spd, ele, note) = (
+                row.get(0),
+                row.get(1),
+                row.get(2),
+                row.get(3),
+                row.get(4),
+                row.get(5),
+                row.get(6),
+            );
+            let point = types::GeoPoint {
+                lat: lat,
+                long: long,
+                spd: spd,
+                ele: ele,
+                note: note,
+                time: ts,
+            };
+            returnable.push_feature(types::geofeature_from_point(id, point));
         }
         Ok(returnable)
     }
@@ -41,8 +56,12 @@ impl<'a> DBQuery<'a> {
         secret: &Option<String>,
         point: &types::GeoPoint,
     ) -> Result<(), postgres::Error> {
-        let stmt = self.0.prepare_cached("INSERT INTO geohub.geodata (client, lat, long, spd, t, ele, secret) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'))").unwrap();
-        let channel = format!("NOTIFY {}, '{}'", ids::channel_name(name, secret.as_ref().unwrap_or(&"".into()).as_str()), name);
+        let stmt = self.0.prepare_cached("INSERT INTO geohub.geodata (client, lat, long, spd, t, ele, secret, note) VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'), $8)").unwrap();
+        let channel = format!(
+            "NOTIFY {}, '{}'",
+            ids::channel_name(name, secret.as_ref().unwrap_or(&"".into()).as_str()),
+            name
+        );
         let notify = self.0.prepare_cached(channel.as_str()).unwrap();
         stmt.execute(&[
             &name,
@@ -52,6 +71,7 @@ impl<'a> DBQuery<'a> {
             &point.time,
             &point.ele,
             &secret,
+            &point.note,
         ])
         .unwrap();
         notify.execute(&[]).unwrap();
@@ -68,7 +88,7 @@ impl<'a> DBQuery<'a> {
     ) -> Option<(types::GeoJSON, i32)> {
         let mut returnable = types::GeoJSON::new();
         let check_for_new = self.0.prepare_cached(
-            r"SELECT id, t, lat, long, spd, ele FROM geohub.geodata
+            r"SELECT id, t, lat, long, spd, ele, note FROM geohub.geodata
             WHERE (client = $1) and (id > $2) AND (secret = public.digest($3, 'sha256') or secret is null)
             ORDER BY id DESC
             LIMIT $4").unwrap(); // Must succeed.
@@ -84,15 +104,24 @@ impl<'a> DBQuery<'a> {
                 let mut last = 0;
 
                 for row in rows.iter() {
-                    let (id, ts, lat, long, spd, ele) = (
+                    let (id, ts, lat, long, spd, ele, note) = (
                         row.get(0),
                         row.get(1),
                         row.get(2),
                         row.get(3),
                         row.get(4),
                         row.get(5),
+                        row.get(6),
                     );
-                    returnable.push_feature(types::geofeature_from_row(Some(id), ts, lat, long, spd, ele));
+                    let point = types::GeoPoint {
+                        time: ts,
+                        lat: lat,
+                        long: long,
+                        spd: spd,
+                        ele: ele,
+                        note: note,
+                    };
+                    returnable.push_feature(types::geofeature_from_point(Some(id), point));
                     if id > last {
                         last = id;
                     }

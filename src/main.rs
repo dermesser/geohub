@@ -94,7 +94,10 @@ fn retrieve_json(
 
 /// time is like 2020-11-30T20:12:36.444Z (ISO 8601). By default, server time is set.
 /// secret can be used to protect points.
-#[rocket::post("/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>&<secret>")]
+#[rocket::post(
+    "/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>&<secret>",
+    data = "<note>"
+)]
 fn log(
     db: db::DBConn,
     name: String,
@@ -104,6 +107,7 @@ fn log(
     time: Option<String>,
     s: Option<f64>,
     ele: Option<f64>,
+    note: Option<String>,
 ) -> http::GeoHubResponse {
     let db = db::DBQuery(&db.0);
     // Check that secret and client name are legal.
@@ -117,12 +121,25 @@ fn log(
     if let Some(time) = time {
         ts = util::flexible_timestamp_parse(time).unwrap_or(ts);
     }
+
+    // Only store a note if one was attached.
+    let note = if let Some(note) = note {
+        if note.is_empty() {
+            None
+        } else {
+            Some(note)
+        }
+    } else {
+        note
+    };
+
     let point = types::GeoPoint {
         lat: lat,
         long: longitude,
         time: ts,
         spd: s,
         ele: ele,
+        note: note,
     };
     if let Err(e) = db.log_geopoint(name.as_str(), &secret, &point) {
         return http::server_error(e.to_string());
