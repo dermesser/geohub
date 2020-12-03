@@ -9,6 +9,9 @@ import json
 import sys
 import time
 
+def eprint(*args):
+    print(*args, file=sys.stderr)
+
 def fetch_current(api):
     return requests.get(api).json()
 
@@ -38,13 +41,14 @@ def parse_args():
 def run(args):
     info = fetch_current(args.api)
     if not info:
-        print('Empty info received!')
+        eprint('Empty info received!')
         return
     tzn = info['tzn']
-    print('Running in train:', tzn)
+    eprint('Running in train:', tzn)
 
     with open(args.outfile, 'w') as outfile:
         while True:
+            eprint('{} :: Sending point ({}, {}) to GeoHub.'.format(format_server_time(info['serverTime']), info['longitude'], info['latitude']))
             send_point(args, info)
             outfile.write(json.dumps(info))
             outfile.write('\n')

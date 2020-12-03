@@ -59,4 +59,11 @@ The enclosed python script does just that. Once run, it will
 * Log it to a file consisting of JSON objects separated by newlines
 * Send it to a configured URL.
 
-Run it with `--help` to obtain more info.
+Run it with `--help` to obtain more info. Typically, you might run:
+
+```bash
+$ ./collect.py --geohub_host=my.geohub.com --client=trainjourney007
+```
+
+which will log the current location along with the complete train info returned
+by the API (see above) as note to the specified GeoHub.
