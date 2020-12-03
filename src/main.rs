@@ -133,6 +133,13 @@ fn log(
         note
     };
 
+    // Length-limit notes.
+    if let Some(note) = note.as_ref() {
+        if note.len() > 4096 {
+            return http::bad_request("A note attached to a point may not be longer than 4 KiB.".into());
+        }
+    }
+
     let point = types::GeoPoint {
         lat: lat,
         long: longitude,
