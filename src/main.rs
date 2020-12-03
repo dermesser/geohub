@@ -117,6 +117,13 @@ fn log(
                 .into(),
         );
     }
+    // Length-limit notes.
+    if let Some(note) = note.as_ref() {
+        if note.len() > 4096 {
+            return http::bad_request("A note attached to a point may not be longer than 4 KiB.".into());
+        }
+    }
+
     let mut ts = chrono::Utc::now();
     if let Some(time) = time {
         ts = util::flexible_timestamp_parse(time).unwrap_or(ts);
@@ -132,13 +139,15 @@ fn log(
     } else {
         note
     };
-
-    // Length-limit notes.
-    if let Some(note) = note.as_ref() {
-        if note.len() > 4096 {
-            return http::bad_request("A note attached to a point may not be longer than 4 KiB.".into());
+    let secret = if let Some(secret) = secret {
+        if secret.is_empty() {
+            None
+        } else {
+            Some(secret)
         }
-    }
+    } else {
+        secret
+    };
 
     let point = types::GeoPoint {
         lat: lat,
