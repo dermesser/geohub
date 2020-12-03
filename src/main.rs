@@ -57,7 +57,7 @@ fn retrieve_live(
 }
 
 /// Retrieve GeoJSON data.
-#[rocket::get("/geo/<name>/retrieve/json?<secret>&<from>&<to>&<limit>")]
+#[rocket::get("/geo/<name>/retrieve/json?<secret>&<from>&<to>&<limit>&<last>")]
 fn retrieve_json(
     db: db::DBConn,
     name: String,
@@ -65,6 +65,7 @@ fn retrieve_json(
     from: Option<String>,
     to: Option<String>,
     limit: Option<i64>,
+    last: Option<i32>,
 ) -> http::GeoHubResponse {
     if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
         return http::bad_request(
@@ -85,7 +86,7 @@ fn retrieve_json(
     let limit = limit.unwrap_or(16384);
     let secret = secret.as_ref().map(|s| s.as_str()).unwrap_or("");
 
-    let result = db.retrieve_json(name.as_str(), from_ts, to_ts, secret, limit);
+    let result = db.retrieve_json(name.as_str(), from_ts, to_ts, secret, limit, last);
     match result {
         Ok(json) => http::return_json(&json),
         Err(e) => http::server_error(e.to_string()),

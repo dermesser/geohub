@@ -35,6 +35,7 @@ pub struct GeoProperties {
     time: chrono::DateTime<chrono::Utc>,
     altitude: Option<f64>,
     speed: Option<f64>,
+    id: Option<i32>,
 }
 
 #[derive(serde::Serialize, Debug, Clone)]
@@ -75,6 +76,7 @@ impl GeoJSON {
 }
 
 pub fn geofeature_from_row(
+    id: Option<i32>,
     ts: chrono::DateTime<chrono::Utc>,
     lat: Option<f64>,
     long: Option<f64>,
@@ -84,6 +86,7 @@ pub fn geofeature_from_row(
     GeoFeature {
         typ: "Feature".into(),
         properties: GeoProperties {
+            id: id,
             time: ts,
             altitude: ele,
             speed: spd,

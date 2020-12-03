@@ -17,19 +17,20 @@ impl<'a> DBQuery<'a> {
         to_ts: chrono::DateTime<chrono::Utc>,
         secret: &str,
         limit: i64,
+        last: Option<i32>,
     ) -> Result<types::GeoJSON, postgres::Error> {
         let mut returnable = types::GeoJSON::new();
         let stmt = self.0.prepare_cached(
-            r"SELECT t, lat, long, spd, ele FROM geohub.geodata
-        WHERE (client = $1) and (t between $2 and $3) AND (secret = public.digest($4, 'sha256') or secret is null)
+            r"SELECT id, t, lat, long, spd, ele FROM geohub.geodata
+        WHERE (client = $1) and (t between $2 and $3) AND (secret = public.digest($4, 'sha256') or secret is null) AND (id > $5)
         ORDER BY t ASC
-        LIMIT $5").unwrap(); // Must succeed.
-        let rows = stmt.query(&[&name, &from_ts, &to_ts, &secret, &limit])?;
+        LIMIT $6").unwrap(); // Must succeed.
+        let rows = stmt.query(&[&name, &from_ts, &to_ts, &secret, &last.unwrap_or(0), &limit])?;
         returnable.reserve_features(rows.len());
         for row in rows.iter() {
-            let (ts, lat, long, spd, ele) =
-                (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4));
-            returnable.push_feature(types::geofeature_from_row(ts, lat, long, spd, ele));
+            let (id, ts, lat, long, spd, ele) =
+                (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4), row.get(5));
+            returnable.push_feature(types::geofeature_from_row(id, ts, lat, long, spd, ele));
         }
         Ok(returnable)
     }
@@ -91,7 +92,7 @@ impl<'a> DBQuery<'a> {
                         row.get(4),
                         row.get(5),
                     );
-                    returnable.push_feature(types::geofeature_from_row(ts, lat, long, spd, ele));
+                    returnable.push_feature(types::geofeature_from_row(Some(id), ts, lat, long, spd, ele));
                     if id > last {
                         last = id;
                     }
