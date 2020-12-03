@@ -77,7 +77,7 @@
 
     waitforupdate = function() {
         xhr = new XMLHttpRequest();
-        var url = `/geo/${client}/retrieve/live?secret=${secret}&timeout=50`;
+        var url = `/geo/${client}/retrieve/live?secret=${secret}&timeout=30`;
         console.log('Requesting URL ' + url);
         xhr.responseType = 'json';
         xhr.open('GET', url, true);
