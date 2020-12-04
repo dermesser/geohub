@@ -149,7 +149,7 @@ CloudMade.
 
 ## Usage
 
-![Map data © OpenStreetMap contributors, CC-BY-SA, Imagery © MapBox](screenshot1.png)
+![Map data © OpenStreetMap contributors, CC-BY-SA, Imagery © MapBox](examples/livemap.png)
 *Map data © OpenStreetMap contributors, CC-BY-SA, Imagery © MapBox*
 
 The `assets/` directory contains web applications directly built on top of
@@ -176,6 +176,11 @@ See also the `examples/` directory for more ways to use GeoHub. For example,
 stream metadata from German long distance trains to GeoHub.
 
 ### From the web
+
+![TrackMe "UI"](examples/trackme.png)
+
+*The TrackMe "UI", allowing ingestion of browser-supplied location from any
+device running a web browser.*
 
 The `assets/trackme.html` site contains a simple script to regularly send your
 browser location (only when changed) to the GeoHub instance serving it.
