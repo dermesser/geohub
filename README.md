@@ -152,6 +152,13 @@ CloudMade.
 ![Map data © OpenStreetMap contributors, CC-BY-SA, Imagery © MapBox](screenshot1.png)
 *Map data © OpenStreetMap contributors, CC-BY-SA, Imagery © MapBox*
 
+The `assets/` directory contains web applications directly built on top of
+GeoHub with nothing more than Ajax and some third-party libraries.
+
+## Ingestion
+
+### From Android phones
+
 If you want to go on a difficult hike (though one with nice mobile data
 coverage) and keep your worried parents up to date, do this:
 
@@ -168,5 +175,14 @@ coverage) and keep your worried parents up to date, do this:
 See also the `examples/` directory for more ways to use GeoHub. For example,
 stream metadata from German long distance trains to GeoHub.
 
-The `assets/` directory contains web applications directly built on top of
-GeoHub with nothing more than Ajax and some third-party libraries.
+### From the web
+
+The `assets/trackme.html` site contains a simple script to regularly send your
+browser location (only when changed) to the GeoHub instance serving it.
+
+If your GeoHub is running, you can simply use it by going to
+`https://your.geohub.com/geo/assets/trackme.html?client=YOURCLIENT&secret=YOURSECRET`.
+
+Click the start button to start sending locations to GeoHub. Of course the
+browser will ask for permission before allowing access to you location.
+
