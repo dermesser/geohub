@@ -59,6 +59,8 @@
     // Tell the user where their data is going.
     document.getElementById('uiHost').textContent = thisUrl.hostname;
 
+    // Figure out the client: Try to get it from the user entry field, if it is empty
+    // try the URL parameter, in that case fill in the field.
     function getClient() {
         var inputClient = document.getElementById('inputClient');
         var userClient = inputClient.value;
@@ -70,6 +72,7 @@
         }
         return userClient;
     }
+    // Figure out the secret.
     function getSecret() {
         var inputSecret = document.getElementById('inputSecret');
         var userSecret = inputSecret.value;
@@ -81,12 +84,14 @@
         }
         return userSecret;
     }
+    // Update the link to the livemap if the user has changed client/secret.
     function updateLiveMap() {
         var secret = getSecret();
         var client = getClient();
         var url = `livemap.html?secret=${secret}&client=${client}`;
         document.getElementById('hrefLiveMap').href = url;
     }
+    // Update the table to the newly aquired point.
     function updateUITable(pos) {
         var coord = pos.coords;
         var lastTime = new Date(pos.timestamp);
@@ -96,10 +101,12 @@
         document.getElementById('tblLong').textContent = coord.longitude.toString();
         document.getElementById('tblStatus').textContent = 'Acquired';
     }
+    // Show that the current point has been logged.
     function updateUITableSetLogged() {
         document.getElementById('tblStatus').textContent = 'Logged';
     }
 
+    // Called once the `POST .../log` request has finished.
     function xhrLogCallback(xhr, readyStateChange) {
         if (xhr.readyState === XMLHttpRequest.DONE) {
             if (xhr.status == 200) {
@@ -112,6 +119,8 @@
     }
 
     // Returns closure f(GeolocationCoordinates) logging to this Geohub.
+    // The returned function accepts a GeoLocation position and sends an XHR request
+    // to this GeoHub instance.
     function getLoggingHandler() {
         var lastLat = 0;
         var lastLong = 0;
@@ -128,6 +137,7 @@
                 return;
             }
 
+            // Show new data in UI.
             updateUITable(glp);
 
             lastLat = glc.latitude;
@@ -136,10 +146,11 @@
             const speedorempty = glc.speed ? `s=${glc.speed}` : '';
             const elevationorempty = glc.altitude ? `ele=${glc.altitude}` : '';
             const accorempty = glc.accuracy ? `accuracy=${glc.accuracy}` : '';
+            var querystring = `&lat=${glc.latitude}&longitude=${glc.longitude}&${speedorempty}&${elevationorempty}&${accorempty}`;
+
             var trackUrl = thisUrl.origin + thisUrl.pathname;
             // Maybe just use relative path?
             trackUrl = trackUrl.replace('assets/trackme.html', `${client}/log?secret=${getSecret()}`);
-            var querystring = `&lat=${glc.latitude}&longitude=${glc.longitude}&${speedorempty}&${elevationorempty}&${accorempty}`;
             var url = trackUrl+querystring;
 
             var xhr = new XMLHttpRequest();
@@ -150,8 +161,12 @@
         };
     }
 
+    // Main execution starts here.
+
+    // loggingHandler is a closure produced above.
     const loggingHandler = getLoggingHandler();
 
+    // Handles new events from the GeoLocation API.
     function locationUpdate(pos) {
         console.log('new location:', pos);
         loggingHandler(pos);

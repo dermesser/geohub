@@ -16,8 +16,10 @@
     <div id="mapid"> </div>
 
     <script>
-    const initial = [50, 12];
-    var mymap = L.map('mapid').setView(initial, 13);
+    // Set up map.
+    const initial = [50, 10];
+    var mapZoomed = false;
+    var mymap = L.map('mapid').setView(initial, 5);
 
     var accessToken = 'pk.eyJ1IjoiZGVybWVzc2VyIiwiYSI6ImNraTdwZmUxZTE2OGgydW1oYTU5eW9qYm4ifQ.f9OxY_U78h6iefp-jN9-9w';
     L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
@@ -33,6 +35,8 @@
     var url = new URL(window.location);
     var allMarkers = [];
 
+    // Figure out client/secret from URL and/or UI field. Update UI field with URL value
+    // available.
     function getClient() {
         var inputClient = document.getElementById('inputClient');
         var userClient = inputClient.value;
@@ -51,11 +55,13 @@
 
         if (userSecret.length == 0) {
             inputSecret.value = urlSecret;
-            return urlSecret;
+            return urlSecret ? urlSecret : '';
         }
-        return userSecret;
+        return userSecret ? userSecret : '';
     }
 
+    // Set the current location, called on every new point. Updates the marker and adds
+    // a new point (former position).
     var current_marker = L.marker([0,0]).addTo(mymap);
     const circleProps = {color: 'blue', fillcColor: 'blue', fillOpacity: 0.5, radius: 3}
     function setCurrentLocation(lat, lng) {
@@ -67,11 +73,13 @@
         allMarkers.push(circle);
     }
 
+    // Remove all points from the map (except for the "current position" marker).
     function clearAllMarkers() {
         for (var i = 0; i < allMarkers.length; i++) {
             allMarkers[i].remove();
         }
     }
+    // New points are available. Display them on the map and update the marker.
     function xhrcallback(xhr) {
         console.log('xhrcallback called.', xhr.readyState, xhr.status);
         if (xhr.readyState === XMLHttpRequest.DONE && xhr.status == 200) {
@@ -94,7 +102,9 @@
 
                 console.log('Received update:', coords, 'last:', response);
                 setCurrentLocation(coords[1], coords[0]);
-                mymap.setView([coords[1], coords[0]], mymap.getZoom());
+                // 13 is a good default zoom for an updated point.
+                mymap.setView([coords[1], coords[0]], mapZoomed ? mymap.getZoom() : 13);
+                mapZoomed = true;
             }
 
             // Install next XHR.
@@ -103,10 +113,14 @@
     };
 
 
+    // Fetch the most recent point for this client and display them.
     function backfill(args) {
         xhr = new XMLHttpRequest();
         var client = getClient();
         var secret = getSecret();
+        if (!client) {
+            return;
+        }
         var url = `../../geo/${client}/retrieve/last?secret=${secret}&limit=256`;
         console.log('Requesting URL (backfill) ' + url);
         xhr.responseType = 'json';
@@ -115,10 +129,15 @@
         xhr.send();
     }
 
+    // Ask for updates. This request will hang until timeout is reached or
+    // an update arrives.
     function waitforupdate() {
         xhr = new XMLHttpRequest();
         var client = getClient();
         var secret = getSecret();
+        if (!client) {
+            return;
+        }
         var secretparam = secret == null ? '' : `secret=${secret}`;
         var url = `../../geo/${client}/retrieve/live?${secretparam}&timeout=30`;
         console.log('Requesting URL ' + url);
@@ -128,6 +147,7 @@
         xhr.send();
     }
 
+    // "Go!" was clicked - clear markers and fetch data for new source.
     function buttonGoClicked() {
         clearAllMarkers();
         // Accelerate display.
