@@ -64,7 +64,7 @@
         var userClient = inputClient.value;
         var urlClient = urlParams.get('client');
 
-        if (userClient.len == 0) {
+        if (userClient.length == 0) {
             inputClient.value = urlClient;
             return urlClient;
         }
@@ -75,7 +75,7 @@
         var userSecret = inputSecret.value;
         var urlSecret = urlParams.get('secret');
 
-        if (userSecret.len == 0) {
+        if (userSecret.length == 0) {
             inputSecret.value = urlSecret;
             return urlSecret;
         }
@@ -179,6 +179,11 @@
         };
         updateLiveMap();
     }
+
+    // Pre-fill client/secret.
+    getClient();
+    getSecret();
+    updateLiveMap();
 
     </script>
 
