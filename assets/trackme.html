@@ -123,7 +123,6 @@
 
     function startLogging() {
         var geo = navigator.geolocation;
-        geo.getCurrentPosition(locationUpdate);
         var watchId = geo.watchPosition(locationUpdate);
 
         document.getElementById('uiStartButton').value = 'Stop logging!';
