@@ -122,7 +122,7 @@ fn retrieve_json(
 /// time is like 2020-11-30T20:12:36.444Z (ISO 8601). By default, server time is set.
 /// secret can be used to protect points.
 #[rocket::post(
-    "/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>&<secret>",
+    "/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>&<secret>&<accuracy>",
     data = "<note>"
 )]
 fn log(
@@ -134,7 +134,8 @@ fn log(
     time: Option<String>,
     s: Option<f64>,
     ele: Option<f64>,
-    note: Option<String>,
+    accuracy: Option<f64>,
+    note: rocket::data::Data,
 ) -> http::GeoHubResponse {
     let db = db::DBQuery(&db.0);
     // Check that secret and client name are legal.
@@ -144,28 +145,6 @@ fn log(
                 .into(),
         );
     }
-    // Length-limit notes.
-    if let Some(note) = note.as_ref() {
-        if note.len() > 4096 {
-            return http::bad_request("A note attached to a point may not be longer than 4 KiB.".into());
-        }
-    }
-
-    let mut ts = chrono::Utc::now();
-    if let Some(time) = time {
-        ts = util::flexible_timestamp_parse(time).unwrap_or(ts);
-    }
-
-    // Only store a note if one was attached.
-    let note = if let Some(note) = note {
-        if note.is_empty() {
-            None
-        } else {
-            Some(note)
-        }
-    } else {
-        note
-    };
     let secret = if let Some(secret) = secret {
         if secret.is_empty() {
             None
@@ -176,12 +155,24 @@ fn log(
         secret
     };
 
+    let mut ts = chrono::Utc::now();
+    if let Some(time) = time {
+        ts = util::flexible_timestamp_parse(time).unwrap_or(ts);
+    }
+
+    // Length-limit notes.
+    let note = match http::read_data(note, 4096) {
+        Ok(n) => { if n.is_empty() { None } else { Some(n) } },
+        Err(e) => return e,
+    };
+
     let point = types::GeoPoint {
         lat: lat,
         long: longitude,
         time: ts,
         spd: s,
         ele: ele,
+        accuracy: accuracy,
         note: note,
     };
     if let Err(e) = db.log_geopoint(name.as_str(), &secret, &point) {

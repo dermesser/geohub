@@ -1,5 +1,7 @@
 use rocket::response::Responder;
 
+use std::io::Read;
+
 #[derive(Responder)]
 pub enum GeoHubResponse {
     #[response(status = 200, content_type = "json")]
@@ -25,4 +27,14 @@ pub fn bad_request(msg: String) -> GeoHubResponse {
 
 pub fn server_error(msg: String) -> GeoHubResponse {
     GeoHubResponse::ServerError(msg)
+}
+
+pub fn read_data(d: rocket::Data, limit: u64) -> Result<String, GeoHubResponse> {
+    let mut ds = d.open().take(limit);
+    let mut dest = Vec::with_capacity(limit as usize);
+    if let Err(e) = std::io::copy(&mut ds, &mut dest) {
+        return Err(GeoHubResponse::BadRequest(format!("Error reading request: {}", e)));
+    }
+
+    String::from_utf8(dest).map_err(|e| GeoHubResponse::BadRequest(format!("Decoding error: {}", e)))
 }

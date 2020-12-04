@@ -5,6 +5,7 @@ pub struct GeoPoint {
     pub long: f64,
     pub spd: Option<f64>,
     pub ele: Option<f64>,
+    pub accuracy: Option<f64>,
     pub time: chrono::DateTime<chrono::Utc>,
     pub note: Option<String>,
 }
@@ -36,6 +37,7 @@ pub struct GeoProperties {
     time: chrono::DateTime<chrono::Utc>,
     altitude: Option<f64>,
     speed: Option<f64>,
+    accuracy: Option<f64>,
     /// The unique ID of the point.
     id: Option<i32>,
     /// An arbitrary note attached by the logging client.
@@ -88,6 +90,7 @@ pub fn geofeature_from_point(id: Option<i32>, point: GeoPoint) -> GeoFeature {
             altitude: point.ele,
             speed: point.spd,
             note: point.note,
+            accuracy: point.accuracy,
         },
         geometry: GeoGeometry {
             typ: "Point".into(),
