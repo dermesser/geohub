@@ -1,5 +1,11 @@
 GENERAL
 
+* UI
+ * trackme: Tell user to fill secret/client
+
 FEATURES
 
 * GPX/json export (with UI + API)
+
+BUGS
+

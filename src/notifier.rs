@@ -1,5 +1,4 @@
 use crate::db;
-use crate::ids;
 use crate::types;
 
 use fallible_iterator::FallibleIterator;
@@ -34,6 +33,33 @@ impl<T> SendableSender<T> {
     }
 }
 
+fn encode_notify_payload(client: &str, secret: &Option<String>) -> String {
+    format!(
+        "{} {}",
+        client,
+        secret.as_ref().map(|s| s.as_str()).unwrap_or("")
+    )
+}
+
+fn decode_notify_payload(payload: &str) -> (String, Option<String>) {
+    let parts = payload.split(' ').collect::<Vec<&str>>();
+    assert!(parts.len() >= 1);
+    let secret = if parts.len() > 1 {
+        Some(parts[1].into())
+    } else {
+        None
+    };
+    return (parts[0].into(), secret);
+}
+
+/// Build a channel name from a client name and secret.
+fn channel_name(client: &str, secret: &str) -> String {
+    // The log handler should already have checked this.
+    assert!(secret.find(' ').is_none());
+    assert!(client.find(' ').is_none());
+    format!("geohubclient_update_{}_{}", client, secret)
+}
+
 pub struct NotifyManager(pub SendableSender<NotifyRequest>);
 
 impl NotifyManager {
@@ -61,6 +87,21 @@ impl NotifyManager {
             types::LiveUpdate::new(None, None, Some("timeout, try again".into()))
         }
     }
+
+    pub fn send_notification(
+        &self,
+        dbq: &db::DBQuery,
+        client: &str,
+        secret: &Option<String>,
+    ) -> Result<u64, postgres::Error> {
+        let channel = format!(
+            "NOTIFY {}, '{}'",
+            channel_name(client, secret.as_ref().unwrap_or(&"".into()).as_str()),
+            encode_notify_payload(client, secret),
+        );
+        let notify = dbq.0.prepare_cached(channel.as_str()).unwrap();
+        notify.execute(&[])
+    }
 }
 
 /// Listen for notifications in the database and dispatch to waiting clients.
@@ -70,17 +111,38 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
     let mut clients: HashMap<String, Vec<NotifyRequest>> = HashMap::new();
     let db = db::DBQuery(&db);
 
-    fn listen(db: &postgres::Connection, client: &str, secret: &str) -> postgres::Result<u64> {
+    fn listen(
+        db: &postgres::Connection,
+        client: &str,
+        secret: &Option<String>,
+    ) -> postgres::Result<u64> {
         let n = db
             .execute(
-                &format!("LISTEN {}", ids::channel_name(client, secret).as_str()),
+                &format!(
+                    "LISTEN {}",
+                    channel_name(client, secret.as_ref().map(|s| s.as_str()).unwrap_or(""))
+                        .as_str()
+                ),
                 &[],
             )
             .unwrap();
         Ok(n)
     }
-    fn unlisten(db: &postgres::Connection, chan: &str) -> postgres::Result<u64> {
-        let n = db.execute(&format!("UNLISTEN {}", chan), &[]).unwrap();
+    fn unlisten(
+        db: &postgres::Connection,
+        client: &str,
+        secret: &Option<String>,
+    ) -> postgres::Result<u64> {
+        let n = db
+            .execute(
+                &format!(
+                    "UNLISTEN {}",
+                    channel_name(client, secret.as_ref().map(|s| s.as_str()).unwrap_or(""))
+                        .as_str()
+                ),
+                &[],
+            )
+            .unwrap();
         Ok(n)
     }
 
@@ -91,12 +153,13 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
         // We listen per client and secret to separate clients with different sessions (by secret).
         loop {
             if let Ok(nrq) = rx.try_recv() {
-                let secret = nrq.secret.as_ref().map(|s| s.as_str()).unwrap_or("");
-                let chan_name = ids::channel_name(nrq.client.as_str(), secret);
-                if !clients.contains_key(&chan_name) {
-                    listen(db.0, &nrq.client, secret).ok();
+                // client_id is also the payload sent to the channel. It keys waiters by client and
+                // secret.
+                let client_id = encode_notify_payload(nrq.client.as_str(), &nrq.secret);
+                if !clients.contains_key(&client_id) {
+                    listen(db.0, &nrq.client, &nrq.secret).ok();
                 }
-                clients.entry(chan_name).or_insert(vec![]).push(nrq);
+                clients.entry(client_id).or_insert(vec![]).push(nrq);
             } else {
                 break;
             }
@@ -109,15 +172,17 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
         let mut count = 0;
 
         while let Ok(Some(notification)) = iter.next() {
-            let chan = notification.channel;
-            let (client, secret) = ids::client_secret(chan.as_str());
-            unlisten(db.0, &chan).ok();
+            // We can extract the client and secret from the channel payload. The payload itself is
+            // the hashmap key.
+            let client_id = notification.payload;
+            let (client, secret) = decode_notify_payload(client_id.as_str());
+            unlisten(db.0, client.as_str(), &secret).ok();
 
             // These queries use the primary key index returning one row only and will be quite fast.
             // Still: One query per client.
-            let rows = db.check_for_new_rows(client, &Some(secret.into()), &None, &Some(1));
+            let rows = db.check_for_new_rows(client.as_str(), &secret, &None, &Some(1));
             if let Some((geo, last)) = rows {
-                for request in clients.remove(&chan).unwrap_or(vec![]) {
+                for request in clients.remove(&client_id).unwrap_or(vec![]) {
                     request
                         .respond
                         .send(NotifyResponse {
@@ -127,7 +192,7 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
                         .ok();
                 }
             } else {
-                for request in clients.remove(&chan).unwrap_or(vec![]) {
+                for request in clients.remove(&client_id).unwrap_or(vec![]) {
                     request
                         .respond
                         .send(NotifyResponse {

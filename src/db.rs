@@ -1,4 +1,3 @@
-use crate::ids;
 use crate::types;
 
 /// Managed by Rocket.
@@ -61,12 +60,6 @@ impl<'a> DBQuery<'a> {
         let stmt = self.0.prepare_cached(
             r"INSERT INTO geohub.geodata (client, lat, long, spd, t, ele, secret, note, accuracy)
             VALUES ($1, $2, $3, $4, $5, $6, public.digest($7, 'sha256'), $8, $9)").unwrap();
-        let channel = format!(
-            "NOTIFY {}, '{}'",
-            ids::channel_name(name, secret.as_ref().unwrap_or(&"".into()).as_str()),
-            name
-        );
-        let notify = self.0.prepare_cached(channel.as_str()).unwrap();
         stmt.execute(&[
             &name,
             &point.lat,
@@ -77,10 +70,7 @@ impl<'a> DBQuery<'a> {
             &secret,
             &point.note,
             &point.accuracy,
-        ])
-        .unwrap();
-        notify.execute(&[]).unwrap();
-        Ok(())
+        ]).map(|_| ())
     }
 
     /// Queries for at most `limit` rows since entry ID `last`.
@@ -137,9 +127,8 @@ impl<'a> DBQuery<'a> {
                 return Some((returnable, last));
             }
             return None;
-        } else {
-            // For debugging.
-            rows.unwrap();
+        } else if let Err(e) = rows {
+            eprintln!("check_for_new_rows: Couldn't check new rows: {}", e);
         }
         return None;
     }

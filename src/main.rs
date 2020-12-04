@@ -127,6 +127,7 @@ fn retrieve_json(
 )]
 fn log(
     db: db::DBConn,
+    notify_manager: rocket::State<notifier::NotifyManager>,
     name: String,
     lat: f64,
     longitude: f64,
@@ -177,6 +178,9 @@ fn log(
     };
     if let Err(e) = db.log_geopoint(name.as_str(), &secret, &point) {
         return http::server_error(e.to_string());
+    }
+    if let Err(e) = notify_manager.send_notification(&db, name.as_str(), &secret) {
+        eprintln!("Couldn't send notification: {}", e);
     }
     http::GeoHubResponse::Ok("".into())
 }
