@@ -165,3 +165,8 @@ coverage) and keep your worried parents up to date, do this:
    seconds, it will work best. Latency between a point reaching your server and
    the live map being updated will generally be way less than half a second.
 
+See also the `examples/` directory for more ways to use GeoHub. For example,
+stream metadata from German long distance trains to GeoHub.
+
+The `assets/` directory contains web applications directly built on top of
+GeoHub with nothing more than Ajax and some third-party libraries.
