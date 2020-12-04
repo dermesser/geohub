@@ -2,7 +2,10 @@ GENERAL
 
 * UI
  * trackme: Tell user to fill secret/client
+  * Show link to livemap
  * show circle radius by accuracy
+* Geohub
+ * Unlisten from web handler
 
 FEATURES
 
