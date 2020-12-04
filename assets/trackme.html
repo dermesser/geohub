@@ -23,39 +23,70 @@
             <th>Value</th>
         </tr>
         <tr>
+            <td>Client</td>
+            <td id="tblClient"><input type="text" id="inputClient" value="" /></td>
+        </tr>
+        <tr>
+            <td>Secret</td>
+            <td id="tblSecret"><input type="text" id="inputSecret" value="" /></td>
+        </tr>
+        <tr>
+            <td>LiveMap</td>
+            <td id="tblLiveMap"><a href="" id="hrefLiveMap">LiveMap</a></td>
+        </tr>
+        <tr>
             <td>Status</td>
-            <td id='tblStatus'>?</td>
+            <td id="tblStatus">?</td>
         </tr>
         <tr>
             <td>Last time</td>
-            <td id='tblTime'>?</td>
+            <td id="tblTime">?</td>
         </tr>
         <tr>
             <td>Latitude</td>
-            <td id='tblLat'>?</td>
+            <td id="tblLat">?</td>
         </tr>
         <tr>
             <td>Longitude</td>
-            <td id='tblLong'>?</td>
+            <td id="tblLong">?</td>
         </tr>
     </table>
 
     <script>
 
     var urlParams = new URLSearchParams(window.location.search);
-    var url = new URL(window.location);
-    var secret = urlParams.get('secret');
-    var client = urlParams.get('client');
-
+    var thisUrl = new URL(window.location);
     // Tell the user where their data is going.
-    document.getElementById('uiHost').textContent = url.hostname;
+    document.getElementById('uiHost').textContent = thisUrl.hostname;
 
-    secret = secret ? secret : '';
+    function getClient() {
+        var inputClient = document.getElementById('inputClient');
+        var userClient = inputClient.value;
+        var urlClient = urlParams.get('client');
 
-    var trackUrl = url.origin + url.pathname;
-    // Maybe just use relative path?
-    trackUrl = trackUrl.replace('assets/trackme.html', `${client}/log?secret=${secret}`);
-    
+        if (userClient.len == 0) {
+            inputClient.value = urlClient;
+            return urlClient;
+        }
+        return userClient;
+    }
+    function getSecret() {
+        var inputSecret = document.getElementById('inputSecret');
+        var userSecret = inputSecret.value;
+        var urlSecret = urlParams.get('secret');
+
+        if (userSecret.len == 0) {
+            inputSecret.value = urlSecret;
+            return urlSecret;
+        }
+        return userSecret;
+    }
+    function updateLiveMap() {
+        var secret = getSecret();
+        var client = getClient();
+        var url = `livemap.html?secret=${secret}&client=${client}`;
+        document.getElementById('hrefLiveMap').href = url;
+    }
     function updateUITable(pos) {
         var coord = pos.coords;
         var lastTime = new Date(pos.timestamp);
@@ -84,8 +115,10 @@
     function getLoggingHandler() {
         var lastLat = 0;
         var lastLong = 0;
+
         return function(glp) {
             var glc = glp.coords;
+            var client = getClient();
             if (client == null) {
                 console.log('Not logging: Client is null!');
                 return;
@@ -103,6 +136,9 @@
             const speedorempty = glc.speed ? `s=${glc.speed}` : '';
             const elevationorempty = glc.altitude ? `ele=${glc.altitude}` : '';
             const accorempty = glc.accuracy ? `accuracy=${glc.accuracy}` : '';
+            var trackUrl = thisUrl.origin + thisUrl.pathname;
+            // Maybe just use relative path?
+            trackUrl = trackUrl.replace('assets/trackme.html', `${client}/log?secret=${getSecret()}`);
             var querystring = `&lat=${glc.latitude}&longitude=${glc.longitude}&${speedorempty}&${elevationorempty}&${accorempty}`;
             var url = trackUrl+querystring;
 
@@ -125,12 +161,23 @@
         var geo = navigator.geolocation;
         var watchId = geo.watchPosition(locationUpdate);
 
-        document.getElementById('uiStartButton').value = 'Stop logging!';
-        document.getElementById('uiStartButton').onclick = function() {
+        var startStopButton = document.getElementById('uiStartButton');
+        var inputClient = document.getElementById('inputClient');
+        var inputSecret = document.getElementById('inputSecret');
+
+        // Transition UI into active mode.
+        startStopButton.value = 'Stop logging!';
+        inputClient.disabled = true;
+        inputSecret.disabled = true;
+        // On Stop Logging clicked
+        startStopButton.onclick = function() {
             geo.clearWatch(watchId);
-            document.getElementById('uiStartButton').value = 'Start logging!';
-            document.getElementById('uiStartButton').onclick = startLogging;
+            startStopButton.value = 'Start logging!';
+            startStopButton.onclick = startLogging;
+            inputClient.disabled = false;
+            inputSecret.disabled = false;
         };
+        updateLiveMap();
     }
 
     </script>
