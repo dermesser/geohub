@@ -1,0 +1,140 @@
+<html>
+    <head>
+        <title>GeoHub :: Track me!</title>
+
+        <style>
+        table, th, td {
+          border: 1px solid black;
+        }
+        </style>
+
+    </head>
+
+    <body>
+    <!-- My name: assets/trackme.html -->
+
+    <p style='color: red;'>Warning: This website sends your current location to its server (<span id="uiHost">unknown</span>)</p>
+
+    <input type="button" value="Start logging!" onclick="startLogging()" id='uiStartButton' />
+
+    <table>
+        <tr>
+            <th>Property</th>
+            <th>Value</th>
+        </tr>
+        <tr>
+            <td>Status</td>
+            <td id='tblStatus'>?</td>
+        </tr>
+        <tr>
+            <td>Last time</td>
+            <td id='tblTime'>?</td>
+        </tr>
+        <tr>
+            <td>Latitude</td>
+            <td id='tblLat'>?</td>
+        </tr>
+        <tr>
+            <td>Longitude</td>
+            <td id='tblLong'>?</td>
+        </tr>
+    </table>
+
+    <script>
+
+    var urlParams = new URLSearchParams(window.location.search);
+    var url = new URL(window.location);
+    var secret = urlParams.get('secret');
+    var client = urlParams.get('client');
+
+    // Tell the user where their data is going.
+    document.getElementById('uiHost').textContent = url.hostname;
+
+    secret = secret ? secret : '';
+
+    var trackUrl = url.origin + url.pathname;
+    // Maybe just use relative path?
+    trackUrl = trackUrl.replace('assets/trackme.html', `${client}/log?secret=${secret}`);
+    
+    function updateUITable(pos) {
+        var coord = pos.coords;
+        var lastTime = new Date(pos.timestamp);
+
+        document.getElementById('tblTime').textContent = lastTime.toTimeString();
+        document.getElementById('tblLat').textContent = coord.latitude.toString();
+        document.getElementById('tblLong').textContent = coord.longitude.toString();
+        document.getElementById('tblStatus').textContent = 'Acquired';
+    }
+    function updateUITableSetLogged() {
+        document.getElementById('tblStatus').textContent = 'Logged';
+    }
+
+    function xhrLogCallback(xhr, readyStateChange) {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status == 200) {
+                console.log('Location update successful.');
+                updateUITableSetLogged();
+            } else if (xhr.status == 400) {
+                console.log('Location update unsuccessful! Status:', xhr.responseText);
+            }
+        }
+    }
+
+    // Returns closure f(GeolocationCoordinates) logging to this Geohub.
+    function getLoggingHandler() {
+        var lastLat = 0;
+        var lastLong = 0;
+        return function(glp) {
+            var glc = glp.coords;
+            if (client == null) {
+                console.log('Not logging: Client is null!');
+                return;
+            }
+            if (glc.latitude == lastLat && glc.longitude == lastLong) {
+                console.log('Not logging: Position has not changed');
+                return;
+            }
+
+            updateUITable(glp);
+
+            lastLat = glc.latitude;
+            lastLong = glc.longitude;
+
+            const speedorempty = glc.speed ? `s=${glc.speed}` : '';
+            const elevationorempty = glc.altitude ? `ele=${glc.altitude}` : '';
+            const accorempty = glc.accuracy ? `accuracy=${glc.accuracy}` : '';
+            var querystring = `&lat=${glc.latitude}&longitude=${glc.longitude}&${speedorempty}&${elevationorempty}&${accorempty}`;
+            var url = trackUrl+querystring;
+
+            var xhr = new XMLHttpRequest();
+            xhr.responseType = 'json';
+            xhr.open('POST', url, true);
+            xhr.onreadystatechange = function(result) { xhrLogCallback(xhr, result); };
+            xhr.send();
+        };
+    }
+
+    const loggingHandler = getLoggingHandler();
+
+    function locationUpdate(pos) {
+        console.log('new location:', pos);
+        loggingHandler(pos);
+    }
+
+    function startLogging() {
+        var geo = navigator.geolocation;
+        geo.getCurrentPosition(locationUpdate);
+        var watchId = geo.watchPosition(locationUpdate);
+
+        document.getElementById('uiStartButton').value = 'Stop logging!';
+        document.getElementById('uiStartButton').onclick = function() {
+            geo.clearWatch(watchId);
+            document.getElementById('uiStartButton').value = 'Start logging!';
+            document.getElementById('uiStartButton').onclick = startLogging;
+        };
+    }
+
+    </script>
+
+    </body>
+</html>
