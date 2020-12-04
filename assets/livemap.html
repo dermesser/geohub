@@ -67,7 +67,7 @@
 
     backfill = function(args) {
         xhr = new XMLHttpRequest();
-        var url = `/geo/${client}/retrieve/last?secret=${secret}&limit=256`;
+        var url = `../../geo/${client}/retrieve/last?secret=${secret}&limit=256`;
         console.log('Requesting URL (backfill) ' + url);
         xhr.responseType = 'json';
         xhr.open('GET', url, true);
@@ -77,8 +77,8 @@
 
     waitforupdate = function() {
         xhr = new XMLHttpRequest();
-        var secretparam = secret == null ? '' : `secret={secret}`;
-        var url = `/geo/${client}/retrieve/live?${secretparam}&timeout=30`;
+        var secretparam = secret == null ? '' : `secret=${secret}`;
+        var url = `../../geo/${client}/retrieve/live?${secretparam}&timeout=30`;
         console.log('Requesting URL ' + url);
         xhr.responseType = 'json';
         xhr.open('GET', url, true);
