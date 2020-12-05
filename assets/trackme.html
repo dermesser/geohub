@@ -7,6 +7,7 @@
           border: 1px solid black;
         }
         </style>
+        <script src="shared.js"></script>
 
     </head>
 
@@ -59,53 +60,6 @@
     // Tell the user where their data is going.
     document.getElementById('uiHost').textContent = thisUrl.hostname;
 
-    // Figure out the client: Try to get it from the user entry field, if it is empty
-    // try the URL parameter, in that case fill in the field.
-    function getClient() {
-        var inputClient = document.getElementById('inputClient');
-        var userClient = inputClient.value;
-        var urlClient = urlParams.get('client');
-
-        if (userClient.length == 0) {
-            inputClient.value = urlClient;
-            return urlClient;
-        }
-        return userClient;
-    }
-    // Figure out the secret.
-    function getSecret() {
-        var inputSecret = document.getElementById('inputSecret');
-        var userSecret = inputSecret.value;
-        var urlSecret = urlParams.get('secret');
-
-        if (userSecret.length == 0) {
-            inputSecret.value = urlSecret;
-            return urlSecret;
-        }
-        return userSecret;
-    }
-    // Update URL from client/secret.
-    function updateURL(client, secret) {
-        var url = window.location.toString();
-        
-        if (url.search('\\?') < 0) {
-            url += '?';
-        }
-
-        if (url.search('secret=') > 0) {
-            url = url.replace(/secret=[a-zA-Z0-9]*/, `secret=${secret}`);
-        } else {
-            url += `&secret=${secret}`;
-        }
-
-        if (url.search('client=') > 0) {
-            url = url.replace(/client=[a-zA-Z0-9]*/, `client=${client}`);
-        } else {
-            url += `&client=${client}`;
-        }
-
-        window.history.pushState({}, "", url);
-    }
     // Update the link to the livemap if the user has changed client/secret.
     function updateLiveMap() {
         var secret = getSecret();
