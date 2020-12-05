@@ -75,16 +75,16 @@ impl NotifyManager {
         };
 
         let req = NotifyRequest {
-            client: client,
+            client: client.clone(),
             secret: secret,
             respond: send,
         };
         self.0.send(req).unwrap();
 
         if let Ok(response) = recv.recv_timeout(time::Duration::new(timeout.unwrap_or(30), 0)) {
-            types::LiveUpdate::new(response.last, response.geo, None)
+            types::LiveUpdate::new(client, response.last, response.geo, None)
         } else {
-            types::LiveUpdate::new(None, None, Some("timeout, try again".into()))
+            types::LiveUpdate::new(client, None, None, Some("timeout, try again".into()))
         }
     }
 

@@ -14,15 +14,17 @@ pub struct GeoPoint {
 pub struct LiveUpdate {
     #[serde(rename = "type")]
     typ: String, // always "GeoHubUpdate"
+    client: String,
     last: Option<i32>,
     geo: Option<GeoJSON>,
     error: Option<String>,
 }
 
 impl LiveUpdate {
-    pub fn new(last: Option<i32>, geo: Option<GeoJSON>, err: Option<String>) -> LiveUpdate {
+    pub fn new(client: String, last: Option<i32>, geo: Option<GeoJSON>, err: Option<String>) -> LiveUpdate {
         LiveUpdate {
             typ: "GeoHubUpdate".into(),
+            client: client,
             last: last,
             geo: geo,
             error: err,

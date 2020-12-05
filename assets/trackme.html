@@ -84,6 +84,28 @@
         }
         return userSecret;
     }
+    // Update URL from client/secret.
+    function updateURL(client, secret) {
+        var url = window.location.toString();
+        
+        if (url.search('\\?') < 0) {
+            url += '?';
+        }
+
+        if (url.search('secret=') > 0) {
+            url = url.replace(/secret=[a-zA-Z0-9]*/, `secret=${secret}`);
+        } else {
+            url += `&secret=${secret}`;
+        }
+
+        if (url.search('client=') > 0) {
+            url = url.replace(/client=[a-zA-Z0-9]*/, `client=${client}`);
+        } else {
+            url += `&client=${client}`;
+        }
+
+        window.history.pushState({}, "", url);
+    }
     // Update the link to the livemap if the user has changed client/secret.
     function updateLiveMap() {
         var secret = getSecret();
@@ -193,6 +215,7 @@
             inputSecret.disabled = false;
         };
         updateLiveMap();
+        updateURL();
     }
 
     // Pre-fill client/secret.

@@ -152,10 +152,9 @@ The `assets/` directory contains web applications directly built on top of
 GeoHub with nothing more than Ajax and some third-party libraries.
 
 This also allows you to immediately use the `livemap` app at
-`https://yourhost.com/geo/assets/livemap.html?client=<yourclient>&secret=verysecret`,
-which consists of a single HTML page, a CSS file, and the leaflet.js library
-(which is included). - latter is (c) 2010-2019 Vladimir Agafonkin, (c) 2010-2011
-CloudMade.
+`https://yourhost.com/geo/assets/livemap.html`, which consists of a single HTML
+page, a CSS file, and the leaflet.js library (which is included). - latter is
+(c) 2010-2019 Vladimir Agafonkin, (c) 2010-2011 CloudMade.
 
 ## Ingestion
 

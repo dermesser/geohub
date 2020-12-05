@@ -59,6 +59,27 @@
         }
         return userSecret ? userSecret : '';
     }
+    function updateURL(client, secret) {
+        var url = window.location.toString();
+
+        if (url.search('\\?') < 0) {
+            url += '?';
+        }
+
+        if (url.search('secret=') > 0) {
+            url = url.replace(/secret=[a-zA-Z0-9]*/, `secret=${secret}`);
+        } else {
+            url += `&secret=${secret}`;
+        }
+
+        if (url.search('client=') > 0) {
+            url = url.replace(/client=[a-zA-Z0-9]*/, `client=${client}`);
+        } else {
+            url += `&client=${client}`;
+        }
+
+        window.history.pushState({}, "", url);
+    }
 
     // Set the current location, called on every new point. Updates the marker and adds
     // a new point (former position).
@@ -84,7 +105,12 @@
         console.log('xhrcallback called.', xhr.readyState, xhr.status);
         if (xhr.readyState === XMLHttpRequest.DONE && xhr.status == 200) {
             const response = xhr.response;
-            if (response['geo']) {
+            console.log("Client update for", response.client);
+            if (response.client != getClient()) {
+                console.log("Received outdated client update.");
+                return;
+            }
+            if (response.client == getClient() && response['geo']) {
                 const features = response['geo']['features'];
                 const lastfeature = features[0];
                 console.log(`xhrcallback: ${features.length} elements received.`);
@@ -109,13 +135,15 @@
 
             // Install next XHR.
             waitforupdate();
+        } else {
+            return;
         }
     };
 
 
     // Fetch the most recent point for this client and display them.
     function backfill(args) {
-        xhr = new XMLHttpRequest();
+        var xhr = new XMLHttpRequest();
         var client = getClient();
         var secret = getSecret();
         if (!client) {
@@ -132,7 +160,7 @@
     // Ask for updates. This request will hang until timeout is reached or
     // an update arrives.
     function waitforupdate() {
-        xhr = new XMLHttpRequest();
+        var xhr = new XMLHttpRequest();
         var client = getClient();
         var secret = getSecret();
         if (!client) {
@@ -150,6 +178,7 @@
     // "Go!" was clicked - clear markers and fetch data for new source.
     function buttonGoClicked() {
         clearAllMarkers();
+        updateURL(getClient(), getSecret());
         // Accelerate display.
         backfill();
     }

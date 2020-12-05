@@ -15,10 +15,10 @@ use rocket;
 /// Almost like retrieve/json, but sorts in descending order, doesn't work with intervals (only
 /// limit), and returns a LiveUpdate.
 /// Used for backfilling recent points in the UI.
-#[rocket::get("/geo/<name>/retrieve/last?<secret>&<last>&<limit>")]
+#[rocket::get("/geo/<client>/retrieve/last?<secret>&<last>&<limit>")]
 fn retrieve_last(
     db: db::DBConn,
-    name: String,
+    client: String,
     secret: Option<String>,
     last: Option<i32>,
     limit: Option<i64>,
@@ -33,10 +33,11 @@ fn retrieve_last(
         secret
     };
     let db = db::DBQuery(&db.0);
-    if let Some((geojson, newlast)) = db.check_for_new_rows(&name, &secret, &last, &limit) {
-        rocket_contrib::json::Json(types::LiveUpdate::new(Some(newlast), Some(geojson), None))
+    if let Some((geojson, newlast)) = db.check_for_new_rows(&client, &secret, &last, &limit) {
+        rocket_contrib::json::Json(types::LiveUpdate::new(client, Some(newlast), Some(geojson), None))
     } else {
         rocket_contrib::json::Json(types::LiveUpdate::new(
+                client,
             last,
             None,
             Some("No rows returned".into()),
