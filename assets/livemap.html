@@ -70,7 +70,9 @@
                 const features = response['geo']['features'];
                 const lastfeature = features[0];
                 console.log(`xhrcallback: ${features.length} elements received.`);
-                // Backfill old circles.
+                // Backfill old circles. This happens when called from a
+                // backfill() triggered request to `/last` or when a client sent
+                // several points at once.
                 if (features.length > 0) {
                     for (i = 1; i < features.length; i++) {
                         var coords = features[i]['geometry']['coordinates'];
