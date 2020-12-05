@@ -42,6 +42,7 @@ logged with this secret.
   * `speed`: Speed in km/h (usually). If you decide to always use m/s, you are
   free to do so. **Optional**.
   * `elevation`: Elevation in meters. **Optional**.
+  * `accuracy`: Accuracy in meters. **Optional**
   * A body -- if present and encoded in whatever content-type -- is attached as `note` to the
   point and returned as property `note` of GeoJSON points later.
   * Usually returns code **200** except for server errors (500) or malformed inputs (400).
@@ -81,6 +82,7 @@ entries>`
           "altitude": 40,
           "speed": 22,
           "id": 1205,
+          "accuracy": 12.5,
           "note": "A happy little note",
         },
         "geometry": {
