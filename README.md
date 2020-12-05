@@ -35,6 +35,7 @@ logged with this secret.
 
 * `POST` `/geo/<client>/log?lat=<latitude>&longitude=<longitude>&time=<time>&s=<speed>&ele=<elevation>&secret=<secret>`
   * Log a new point.
+  * `client`, `secret`: See above.
   * `latitude`, `longitude`: Geographical position, in decimal degrees (note:
       may be extended later). **Required**.
   * `time`: ISO 8601 time. If left out, current server time is used. Example:
@@ -46,6 +47,35 @@ logged with this secret.
   * A body -- if present and encoded in whatever content-type -- is attached as `note` to the
   point and returned as property `note` of GeoJSON points later.
   * Usually returns code **200** except for server errors (500) or malformed inputs (400).
+* `POST` `/geo/<client>/logjson?secret=<secret>` with body: `application/json`.
+  * Log one or more new points.
+  * `client` and `secret` have the semantics described above.
+  * The body is expected to be a JSON document structured like the following
+  example -- a single field `locations` containing a list of GeoJSON `Feature`s.
+
+```json
+{
+  "locations": [
+  {
+    "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.030581,
+        37.331800
+        ]
+      },
+      "properties": {
+        "timestamp": "2015-10-01T08:00:00-0700",
+        "altitude": 0,
+        "speed": 4,
+        "horizontal_accuracy": 30,
+      }
+  },
+  ]
+}
+```
+
 * `GET` `/geo/assets/...`
   * Static file serving. The `assets` directory should be deployed in the
   current working directory from which the server is run.
@@ -164,9 +194,12 @@ If you want to go on a difficult hike (though one with nice mobile data
 coverage) and keep your worried parents up to date, do this:
 
 1. Install the [`GPSLogger` app](https://github.com/mendhak/gpslogger). It is
-   the only one I know of that has the kind of feature required for GeoHub.
+   one of only few apps I know of that has the features required to work with
+   GeoHub.
 1. Configure the *Custom URL* feature to your URL. By default, you only
-   (optionally) need to add a secret and of course your host and URL part.
+   (optionally) need to add a secret and of course your host and URL part. See
+   the API documentation above: GPSLogger works with the `/geo/<client>/log`
+   endpoint.
 1. Start logging, and pass the appropriate link to the livemap
    (`https://yourhost.com/geo/assets/livemap.html?client=<yourclient>&secret=verysecret`)
    to any concerned relatives. If you configure GPSLogger to log every few
@@ -175,6 +208,12 @@ coverage) and keep your worried parents up to date, do this:
 
 See also the `examples/` directory for more ways to use GeoHub. For example,
 stream metadata from German long distance trains to GeoHub.
+
+Alternatively, Overland ([iOS](https://github.com/aaronpk/Overland-iOS),
+[Android](https://github.com/OpenHumans/Overland_android)) is also able to send
+data to GeoHub. As it uses a different API, use a URL like
+`https://yourhost.com/geo/<yourclient>/logjson?secret=<yoursecret>`. This is the
+batch API, as Overland sends batches of points.
 
 ### From the web
 
