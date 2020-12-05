@@ -1,8 +1,10 @@
+
 use crate::db;
 use crate::types;
 
 use fallible_iterator::FallibleIterator;
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::{mpsc, Arc, Mutex};
 use std::time;
 
@@ -33,15 +35,24 @@ impl<T> SendableSender<T> {
     }
 }
 
-fn encode_notify_payload(client: &str, secret: &Option<String>) -> String {
+fn encode_client_id(client: &str, secret: &Option<String>) -> String {
     format!(
         "{} {}",
         client,
-        secret.as_ref().map(|s| s.as_str()).unwrap_or("")
+        secret.as_ref().map(|s| s.as_str()).unwrap_or(""),
     )
 }
 
-fn decode_notify_payload(payload: &str) -> (String, Option<String>) {
+fn encode_notify_payload(client: &str, secret: &Option<String>, nrows: Option<i64>) -> String {
+    format!(
+        "{} {} {}",
+        client,
+        secret.as_ref().map(|s| s.as_str()).unwrap_or(""),
+        nrows.unwrap_or(1)
+    )
+}
+
+fn decode_notify_payload(payload: &str) -> (String, Option<String>, Option<i64>) {
     let parts = payload.split(' ').collect::<Vec<&str>>();
     assert!(parts.len() >= 1);
     let secret = if parts.len() > 1 {
@@ -49,7 +60,12 @@ fn decode_notify_payload(payload: &str) -> (String, Option<String>) {
     } else {
         None
     };
-    return (parts[0].into(), secret);
+    let nrows = if parts.len() > 2 {
+        i64::from_str(parts[2]).ok()
+    } else {
+        None
+    };
+    return (parts[0].into(), secret, nrows);
 }
 
 /// Build a channel name from a client name and secret.
@@ -93,11 +109,12 @@ impl NotifyManager {
         dbq: &db::DBQuery,
         client: &str,
         secret: &Option<String>,
+        nrows: Option<i64>,
     ) -> Result<u64, postgres::Error> {
         let channel = format!(
             "NOTIFY {}, '{}'",
             channel_name(client, secret.as_ref().unwrap_or(&"".into()).as_str()),
-            encode_notify_payload(client, secret),
+            encode_notify_payload(client, secret, nrows),
         );
         let notify = dbq.0.prepare_cached(channel.as_str()).unwrap();
         notify.execute(&[])
@@ -155,7 +172,7 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
             if let Ok(nrq) = rx.try_recv() {
                 // client_id is also the payload sent to the channel. It keys waiters by client and
                 // secret.
-                let client_id = encode_notify_payload(nrq.client.as_str(), &nrq.secret);
+                let client_id = encode_client_id(nrq.client.as_str(), &nrq.secret);
                 if !clients.contains_key(&client_id) {
                     listen(db.0, &nrq.client, &nrq.secret).ok();
                 }
@@ -174,12 +191,13 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
         while let Ok(Some(notification)) = iter.next() {
             // We can extract the client and secret from the channel payload. The payload itself is
             // the hashmap key.
-            let client_id = notification.payload;
-            let (client, secret) = decode_notify_payload(client_id.as_str());
+            let (client, secret, nrows) = decode_notify_payload(&notification.payload);
+            let client_id = encode_client_id(&client, &secret);
+
             unlisten(db.0, client.as_str(), &secret).ok();
 
             // These queries use the primary key index returning one row only and will be quite fast.
-            let rows = db.check_for_new_rows(client.as_str(), &secret, &None, &Some(1));
+            let rows = db.check_for_new_rows(client.as_str(), &secret, &None, &Some(nrows.unwrap_or(1)));
             if let Some((geo, last)) = rows {
                 for request in clients.remove(&client_id).unwrap_or(vec![]) {
                     request

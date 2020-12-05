@@ -1,4 +1,4 @@
-/// Non-JSON plain point representation.
+/// Non-JSON plain point representation. Flat and representing a database row.
 #[derive(Debug, Clone)]
 pub struct GeoPoint {
     pub lat: f64,
@@ -21,7 +21,12 @@ pub struct LiveUpdate {
 }
 
 impl LiveUpdate {
-    pub fn new(client: String, last: Option<i32>, geo: Option<GeoJSON>, err: Option<String>) -> LiveUpdate {
+    pub fn new(
+        client: String,
+        last: Option<i32>,
+        geo: Option<GeoJSON>,
+        err: Option<String>,
+    ) -> LiveUpdate {
         LiveUpdate {
             typ: "GeoHubUpdate".into(),
             client: client,
@@ -32,13 +37,20 @@ impl LiveUpdate {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub struct LogLocations {
+    pub locations: Vec<GeoFeature>,
+}
+
 /// Fetch geodata as JSON.
 ///
-#[derive(serde::Serialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct GeoProperties {
+    #[serde(alias = "timestamp")]
     time: chrono::DateTime<chrono::Utc>,
     altitude: Option<f64>,
     speed: Option<f64>,
+    #[serde(alias = "horizontal_accuracy")]
     accuracy: Option<f64>,
     /// The unique ID of the point.
     id: Option<i32>,
@@ -46,14 +58,14 @@ pub struct GeoProperties {
     note: Option<String>,
 }
 
-#[derive(serde::Serialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct GeoGeometry {
     #[serde(rename = "type")]
     typ: String, // always "Point"
     coordinates: (f64, f64), // always [long, lat]
 }
 
-#[derive(serde::Serialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct GeoFeature {
     #[serde(rename = "type")]
     typ: String, // always "Feature"
@@ -61,7 +73,7 @@ pub struct GeoFeature {
     geometry: GeoGeometry,
 }
 
-#[derive(serde::Serialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct GeoJSON {
     #[serde(rename = "type")]
     typ: String, // always "FeatureCollection"
@@ -98,5 +110,19 @@ pub fn geofeature_from_point(id: Option<i32>, point: GeoPoint) -> GeoFeature {
             typ: "Point".into(),
             coordinates: (point.long, point.lat),
         },
+    }
+}
+
+pub fn geopoint_from_feature(feat: GeoFeature) -> GeoPoint {
+    let geo = feat.geometry;
+    let prop = feat.properties;
+    GeoPoint {
+        accuracy: prop.accuracy,
+        ele: prop.altitude,
+        long: geo.coordinates.0,
+        lat: geo.coordinates.1,
+        note: None,
+        spd: prop.speed,
+        time: prop.time,
     }
 }

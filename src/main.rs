@@ -34,10 +34,15 @@ fn retrieve_last(
     };
     let db = db::DBQuery(&db.0);
     if let Some((geojson, newlast)) = db.check_for_new_rows(&client, &secret, &last, &limit) {
-        rocket_contrib::json::Json(types::LiveUpdate::new(client, Some(newlast), Some(geojson), None))
+        rocket_contrib::json::Json(types::LiveUpdate::new(
+            client,
+            Some(newlast),
+            Some(geojson),
+            None,
+        ))
     } else {
         rocket_contrib::json::Json(types::LiveUpdate::new(
-                client,
+            client,
             last,
             None,
             Some("No rows returned".into()),
@@ -46,7 +51,8 @@ fn retrieve_last(
 }
 
 /// Wait for an update.
-/// Only one point is returned. To retrieve a history of points, call retrieve_last.
+/// Usually, one point is returned, but if a client sent several at once, all the points will be
+/// delivered.
 #[rocket::get("/geo/<name>/retrieve/live?<secret>&<timeout>")]
 fn retrieve_live(
     notify_manager: rocket::State<notifier::NotifyManager>,
@@ -120,6 +126,8 @@ fn retrieve_json(
 
 /// Ingest geo data.
 
+/// Ingest individual points by URL query string.
+///
 /// time is like 2020-11-30T20:12:36.444Z (ISO 8601). By default, server time is set.
 /// secret can be used to protect points.
 #[rocket::post(
@@ -139,7 +147,6 @@ fn log(
     accuracy: Option<f64>,
     note: rocket::data::Data,
 ) -> http::GeoHubResponse {
-    let db = db::DBQuery(&db.0);
     // Check that secret and client name are legal.
     if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
         return http::bad_request(
@@ -156,6 +163,7 @@ fn log(
     } else {
         secret
     };
+    let db = db::DBQuery(&db.0);
 
     let mut ts = chrono::Utc::now();
     if let Some(time) = time {
@@ -164,7 +172,13 @@ fn log(
 
     // Length-limit notes.
     let note = match http::read_data(note, 4096) {
-        Ok(n) => { if n.is_empty() { None } else { Some(n) } },
+        Ok(n) => {
+            if n.is_empty() {
+                None
+            } else {
+                Some(n)
+            }
+        }
         Err(e) => return e,
     };
 
@@ -180,10 +194,68 @@ fn log(
     if let Err(e) = db.log_geopoint(name.as_str(), &secret, &point) {
         return http::server_error(e.to_string());
     }
-    if let Err(e) = notify_manager.send_notification(&db, name.as_str(), &secret) {
+    if let Err(e) = notify_manager.send_notification(&db, name.as_str(), &secret, Some(1)) {
         eprintln!("Couldn't send notification: {}", e);
     }
     http::GeoHubResponse::Ok("".into())
+}
+
+/// Ingest GeoJSON.
+#[rocket::post("/geo/<name>/logjson?<secret>", data = "<body>")]
+fn log_json(
+    db: db::DBConn,
+    notify_manager: rocket::State<notifier::NotifyManager>,
+    name: String,
+    secret: Option<String>,
+    body: rocket_contrib::json::Json<types::LogLocations>,
+) -> http::GeoHubResponse {
+    // Check that secret and client name are legal.
+    if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
+        return http::bad_request(
+            "You have supplied an invalid secret or name. Both must be ASCII alphanumeric strings."
+                .into(),
+        );
+    }
+    let secret = if let Some(secret) = secret {
+        if secret.is_empty() {
+            None
+        } else {
+            Some(secret)
+        }
+    } else {
+        secret
+    };
+    let db = db::DBQuery(&db.0);
+
+    let geofeats = body.into_inner().locations;
+    let nrows = geofeats.len() as i64;
+
+    // Due to prepared statements, this isn't as bad as it looks.
+    let mut errs = vec![];
+    for feat in geofeats {
+        let point = types::geopoint_from_feature(feat);
+        if let Err(e) = db.log_geopoint(name.as_str(), &secret, &point) {
+            errs.push(e);
+        }
+    }
+
+    // Only notify once.
+    if let Err(e) = notify_manager.send_notification(&db, name.as_str(), &secret, Some(nrows)) {
+        eprintln!("Couldn't send notification: {}", e);
+    }
+
+    if errs.is_empty() {
+        http::GeoHubResponse::Ok("".into())
+    } else {
+        let errstring = errs
+            .into_iter()
+            .take(10)
+            .map(|e| e.to_string())
+            .collect::<Vec<String>>()
+            .join(";");
+        eprintln!("Couldn't write points: {}", errstring);
+        http::GeoHubResponse::Ok(errstring)
+    }
 }
 
 /// Serve static files.
@@ -218,7 +290,7 @@ fn main() {
         ))
         .mount(
             "/",
-            rocket::routes![log, retrieve_json, retrieve_last, retrieve_live, assets],
+            rocket::routes![log, log_json, retrieve_json, retrieve_last, retrieve_live, assets],
         )
         .launch();
 }
