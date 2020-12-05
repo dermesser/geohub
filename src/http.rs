@@ -33,8 +33,12 @@ pub fn read_data(d: rocket::Data, limit: u64) -> Result<String, GeoHubResponse> 
     let mut ds = d.open().take(limit);
     let mut dest = Vec::with_capacity(limit as usize);
     if let Err(e) = std::io::copy(&mut ds, &mut dest) {
-        return Err(GeoHubResponse::BadRequest(format!("Error reading request: {}", e)));
+        return Err(GeoHubResponse::BadRequest(format!(
+            "Error reading request: {}",
+            e
+        )));
     }
 
-    String::from_utf8(dest).map_err(|e| GeoHubResponse::BadRequest(format!("Decoding error: {}", e)))
+    String::from_utf8(dest)
+        .map_err(|e| GeoHubResponse::BadRequest(format!("Decoding error: {}", e)))
 }

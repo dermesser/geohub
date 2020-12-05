@@ -70,7 +70,8 @@ impl<'a> DBQuery<'a> {
             &secret,
             &point.note,
             &point.accuracy,
-        ]).map(|_| ())
+        ])
+        .map(|_| ())
     }
 
     /// Queries for at most `limit` rows since entry ID `last`.
