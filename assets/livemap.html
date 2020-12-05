@@ -113,6 +113,7 @@
         xhr.send();
     }
 
+    var lastXHR = null;
     // Ask for updates. This request will hang until timeout is reached or
     // an update arrives.
     function waitforupdate() {
@@ -129,11 +130,13 @@
         xhr.open('GET', url, true);
         xhr.onreadystatechange = function() { xhrcallback(xhr) };
         xhr.send();
+        lastXHR = xhr;
     }
 
     // "Go!" was clicked - clear markers and fetch data for new source.
     function buttonGoClicked() {
         clearAllMarkers();
+        lastXHR.abort();
         updateURL(getClient(), getSecret());
         // Accelerate display.
         backfill();
