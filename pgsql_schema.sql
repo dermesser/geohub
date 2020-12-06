@@ -21,7 +21,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: geodata; Type: TABLE; Schema: public; Owner: lbo
+-- Name: geodata; Type: TABLE; Schema: geohub
 --
 
 CREATE SCHEMA IF NOT EXISTS geohub;
@@ -39,8 +39,6 @@ CREATE TABLE geohub.geodata (
     note text
 );
 
-
-ALTER TABLE geohub.geodata OWNER TO lbo;
 
 --
 -- PostgreSQL database dump complete
