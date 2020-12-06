@@ -81,7 +81,8 @@ logged with this secret.
   current working directory from which the server is run.
 * `GET` `/geo/<client>/retrieve/json?secret=<secret>&from=<from_timestamp>&to=<to_timestamp>&limit=<maximum
 number of entries returned>&last=<id of last known entry>`
-  * Fetch geo data as GeoJSON object.
+  * Fetch geo data as GeoJSON object. Returns oldest point first within the
+  returned `GeoJSON` object.
   * `from`, `to`: Timestamp range. For best results, supply ISO 8601 timestamps,
   but `YYYY-mm-dd hh:mm:ss.sss` is also accepted. (GeoHub tries to be flexible
   about this, and may become better over time).
@@ -94,7 +95,11 @@ number of entries returned>&last=<id of last known entry>`
 * `GET` `/geo/<client>/retrieve/last?secret=<secret>&last=<last ID>&limit=<max
 entries>`
   * Fetch most recent points for the `client`. See `/geo/<client>/retrieve/json`
-  above for descriptions of the other parameters.
+  above for descriptions of the other parameters. As opposed to `retrieve/json`,
+  the returned points are guaranteed to be ordered by time with the newest point
+  first (as makes sense for some use cases), and wrapped inside a `GeoHubUpdate`
+  object containing additional information. This makes the returned value
+  identically structured to that of `retrieve/live` below.
   * Returns a `LiveUpdate` object. `last` is the most-recent ID of all points:
 
 ```json

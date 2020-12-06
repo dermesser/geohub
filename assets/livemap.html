@@ -138,7 +138,9 @@
     // "Go!" was clicked - clear markers and fetch data for new source.
     function buttonGoClicked() {
         clearAllMarkers();
-        lastXHR.abort();
+        if (lastXHR) {
+            lastXHR.abort();
+        }
         updateURL(getClient(), getSecret());
         // Accelerate display.
         backfill();
