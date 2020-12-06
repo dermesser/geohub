@@ -18,10 +18,13 @@ def fetch_current(api):
 def format_server_time(servertime):
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(servertime/1000))
 
-def send_point(args, info):
+def send_point(args, info: dict[str, str]):
     geohub_url = args.geohub.format(HOST=args.geohub_host, CLIENT=args.client or info.get('tzn', 'TRAIN'), SECRET=args.secret, PROTOCOL=args.geohub_scheme)
     additional = '&lat={lat}&longitude={long}&spd={spd}&time={ts}'.format(
             lat=info['latitude'], long=info['longitude'], spd=info['speed'], ts=format_server_time(info['serverTime']))
+    # Delete unnecessary data.
+    for k in ['latitude', 'longitude', 'speed', 'serverTime']:
+        info.pop(k)
     url = geohub_url + additional
     requests.post(url, json=info)
 
@@ -48,11 +51,15 @@ def run(args):
 
     with open(args.outfile, 'w') as outfile:
         while True:
-            eprint('{} :: Sending point ({}, {}) to GeoHub.'.format(format_server_time(info['serverTime']), info['longitude'], info['latitude']))
-            send_point(args, info)
-            outfile.write(json.dumps(info))
-            outfile.write('\n')
+            if info:
+                eprint('{} :: Sending point ({}, {}) to GeoHub.'.format(format_server_time(info['serverTime']), info['longitude'], info['latitude']))
+                send_point(args, info)
+                outfile.write(json.dumps(info))
+                outfile.write('\n')
+            else:
+                eprint('{} :: Skipped point due to no API response.'.format(format_server_time(time.time_ns()/1e6)))
             time.sleep(args.interval)
+            info = fetch_current(args.api)
 
 def main():
     args = parse_args()
