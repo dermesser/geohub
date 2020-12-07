@@ -83,10 +83,10 @@
 
     // New points are available. Display them on the map and update the marker.
     function xhrcallback(xhr) {
-        console.log('xhrcallback called.', xhr.readyState, xhr.status);
+        //console.log('xhrcallback called.', xhr.readyState, xhr.status);
         if (xhr.readyState === XMLHttpRequest.DONE && xhr.status == 200) {
             const response = xhr.response;
-            console.log("Client update for", response.client);
+            //console.log("Client update for", response.client);
             if (response.client != getClient()) {
                 console.log("Received outdated client update.");
                 return;
@@ -164,13 +164,15 @@
     }
 
     function updateUI(time) {
-        var timefield = document.getElementById('outputLastUpdate');
-        var infofields = document.getElementById('infoFields');
-        // This dance restarts the green "update" animation.
-        infofields.style.animation = 'none';
-        infofields.offsetHeight;
-        timefield.textContent = Date(time).toLocaleString().replace(/\([\w\s]+\)/,'');
-        infofields.style.animation = null;
+        if (time) {
+            var timefield = document.getElementById('outputLastUpdate');
+            var infofields = document.getElementById('infoFields');
+            // This dance restarts the green "update" animation.
+            infofields.style.animation = 'none';
+            infofields.offsetHeight;
+            infofields.style.animation = null;
+            timefield.textContent = (new Date(time)).toString().replace(/\([\w\s]+\)/,'');
+        }
     }
     // "Go!" was clicked - clear markers and fetch data for new source.
     function buttonGoClicked() {
