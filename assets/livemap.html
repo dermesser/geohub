@@ -14,7 +14,7 @@
         Secret: <input type="text" value="" id="inputSecret" />
         <input type="button" value="Go!" id="inputGoButton" onclick="buttonGoClicked()" />
     </span>
-    <span id="infoFields">
+    <span id="infoFields" class="timeChanged">
         Last Update: <span id="outputLastUpdate"> </span>
     </span>
 
@@ -70,8 +70,11 @@
                 console.log("Received outdated client update.");
                 return;
             }
-            if (response.client == getClient() && response['geo']) {
+            if (response.client == getClient() && response.geo) {
                 const features = response['geo']['features'];
+                if (features.length == 0) {
+                    return;
+                }
                 const lastfeature = features[0];
                 console.log(`xhrcallback: ${features.length} elements received.`);
                 // Backfill old circles. This happens when called from a
@@ -142,7 +145,13 @@
     }
 
     function updateUI(time) {
-        document.getElementById('outputLastUpdate').textContent = Date(time).toLocaleString();
+        var timefield = document.getElementById('outputLastUpdate');
+        var infofields = document.getElementById('infoFields');
+        // This dance restarts the green "update" animation.
+        infofields.style.animation = 'none';
+        infofields.offsetHeight;
+        timefield.textContent = Date(time).toLocaleString().replace(/\([\w\s]+\)/,'');
+        infofields.style.animation = null;
     }
     // "Go!" was clicked - clear markers and fetch data for new source.
     function buttonGoClicked() {

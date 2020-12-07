@@ -12,3 +12,13 @@
     border-color: green;
     padding: 5px;
 }
+
+@keyframes blinkonupdate {
+    from {background-color: greenyellow;}
+    to {background-color: white;}
+}
+.timeChanged {
+    animation-name: blinkonupdate;
+    animation-duration: 2s;
+    animation-iteration-count: 1;
+}
