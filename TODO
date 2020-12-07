@@ -1,9 +1,8 @@
 GENERAL
 
 * UI
- * trackme: Tell user to fill secret/client
-  * Show link to livemap
- * show circle radius by accuracy
+ * livemap: show circle radius by accuracy
+ * livemap: show time of last update
 * API
 
 FEATURES

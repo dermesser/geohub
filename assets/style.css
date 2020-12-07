@@ -1,3 +1,14 @@
 #mapid {
     height: 100%;
+    margin: 5px;
+}
+#livemapTitle {
+    color: blue;
+    font-weight: bold;
+    margin-right: 3em;
+}
+#infoFields {
+    border-style: solid;
+    border-color: green;
+    padding: 5px;
 }

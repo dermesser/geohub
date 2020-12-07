@@ -8,12 +8,16 @@
     <script src="thirdparty/leaflet.js"></script>
     <script src="shared.js"></script>
 
-    <span style="color: blue; font-weight: bold; margin-right: 3em;">GeoHub LiveMap</span>
+    <span id="livemapTitle">GeoHub LiveMap</span>
     <span id="inputFields">
         Client: <input type="text" value="" id="inputClient" />
         Secret: <input type="text" value="" id="inputSecret" />
         <input type="button" value="Go!" id="inputGoButton" onclick="buttonGoClicked()" />
     </span>
+    <span id="infoFields">
+        Last Update: <span id="outputLastUpdate"> </span>
+    </span>
+
     <div id="mapid"> </div>
 
     <script>
@@ -89,6 +93,8 @@
                 // 13 is a good default zoom for an updated point.
                 mymap.setView([coords[1], coords[0]], mapZoomed ? mymap.getZoom() : 13);
                 mapZoomed = true;
+
+                updateUI(lastfeature.properties.time);
             }
 
             // Install next XHR.
@@ -135,6 +141,9 @@
         lastXHR = xhr;
     }
 
+    function updateUI(time) {
+        document.getElementById('outputLastUpdate').textContent = Date(time).toLocaleString();
+    }
     // "Go!" was clicked - clear markers and fetch data for new source.
     function buttonGoClicked() {
         clearAllMarkers();
