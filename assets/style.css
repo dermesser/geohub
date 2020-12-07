@@ -1,5 +1,12 @@
+body {
+    text-size: 120%;
+}
+.field {
+    width: 15em;
+}
 #mapid {
-    height: 100%;
+    height: 95%;
+    width: 95%;
     margin: 5px;
 }
 #livemapTitle {
