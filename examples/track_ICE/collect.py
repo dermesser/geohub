@@ -19,7 +19,8 @@ def format_server_time(servertime):
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(servertime/1000))
 
 def send_point(args, info: dict[str, str]):
-    geohub_url = args.geohub.format(HOST=args.geohub_host, CLIENT=args.client or info.get('tzn', 'TRAIN'), SECRET=args.secret, PROTOCOL=args.geohub_scheme)
+    geohub_templ = args.geohub + '/{CLIENT}/log?secret={SECRET}'
+    geohub_url = geohub_templ.format(HOST=args.geohub_host, CLIENT=args.client or info.get('tzn', 'TRAIN'), SECRET=args.secret, PROTOCOL=args.geohub_scheme)
     additional = '&lat={lat}&longitude={long}&spd={spd}&time={ts}'.format(
             lat=info['latitude'], long=info['longitude'], spd=info['speed'], ts=format_server_time(info['serverTime']))
     # Delete unnecessary data.
@@ -37,8 +38,7 @@ def parse_args():
     parser.add_argument('--outfile', default='traindata.jsonlines', help='Where to write the JSON data received from the train.')
     parser.add_argument('--geohub_host', default='example.com', help='Host of your GeoHub. Use this if the URL --geohub works for you.')
     parser.add_argument('--geohub_scheme', default='https', help='Protocol scheme of the GeoHub instance. Use this if you do not want to specify the entire --geohub URL')
-    parser.add_argument('--geohub', default='{PROTOCOL}://{HOST}/geo/{CLIENT}/log?secret={SECRET}', help='Base URL of Geohub instance. {PROTOCOL}, {CLIENT}, {HOST}, and {SECRET} will be replaced by the --geohub_scheme, --client, --geohub_host, and --secret values, respectively. This string must end in the URL query parameter section, ready to take more parameters.')
-
+    parser.add_argument('--geohub', default='{PROTOCOL}://{HOST}/geo/', help='Base URL of Geohub instance. E.g., https://example.com/geo. Use --geohub_host, --geohub_scheme if your URL looks like the example.')
     return parser.parse_args()
 
 def run(args):
@@ -47,7 +47,10 @@ def run(args):
         eprint('Empty info received!')
         return
     tzn = info['tzn']
+    geohub_base = args.geohub.format(PROTOCOL=args.geohub_scheme, HOST=args.geohub_host)
+    livemap_url = geohub_base + 'assets/livemap.html?client={client}&secret={secret}'.format(client=args.client, secret=args.secret)
     eprint('Running in train:', tzn)
+    eprint('Go to LiveMap:', livemap_url);
 
     with open(args.outfile, 'w') as outfile:
         while True:
