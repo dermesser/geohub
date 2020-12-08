@@ -60,7 +60,7 @@ fn retrieve_live(
     name: String,
     secret: Option<String>,
     timeout: Option<u64>,
-) -> http::GeoHubResponse {
+) -> http::GeoHubResponder {
     if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
         return http::bad_request(
             "You have supplied an invalid secret or name. Both must be ASCII alphanumeric strings."
@@ -90,7 +90,7 @@ fn retrieve_json(
     to: Option<String>,
     limit: Option<i64>,
     last: Option<i32>,
-) -> http::GeoHubResponse {
+) -> http::GeoHubResponder {
     let result = common_retrieve(db, client, secret, from, to, limit, last);
     match result {
         Ok(points) => {
@@ -111,7 +111,7 @@ fn retrieve_gpx(
     to: Option<String>,
     limit: Option<i64>,
     last: Option<i32>,
-) -> http::GeoHubResponse {
+) -> http::GeoHubResponder {
     let result = common_retrieve(db, client, secret, from, to, limit, last);
     match result {
         Ok(points) => {
@@ -121,7 +121,7 @@ fn retrieve_gpx(
                 return he;
             }
             match String::from_utf8(serialized) {
-                Ok(xml) => http::return_xml(xml),
+                Ok(gx) => http::return_gpx(gx),
                 Err(e) => http::server_error(e),
             }
         }
@@ -137,7 +137,7 @@ fn common_retrieve(
     to: Option<String>,
     limit: Option<i64>,
     last: Option<i32>,
-) -> Result<Vec<types::GeoPoint>, http::GeoHubResponse> {
+) -> Result<Vec<types::GeoPoint>, http::GeoHubResponder> {
     if !ids::name_and_secret_acceptable(client.as_str(), secret.as_ref().map(|s| s.as_str())) {
         return Err(http::bad_request(
             "You have supplied an invalid secret or client. Both must be ASCII alphanumeric strings."
@@ -193,7 +193,7 @@ fn log(
     ele: Option<f64>,
     accuracy: Option<f64>,
     note: rocket::data::Data,
-) -> http::GeoHubResponse {
+) -> http::GeoHubResponder {
     // Check that secret and client name are legal.
     if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
         return http::bad_request(
@@ -245,7 +245,7 @@ fn log(
     if let Err(e) = notify_manager.send_notification(&db, name.as_str(), &secret, Some(1)) {
         eprintln!("Couldn't send notification: {}", e);
     }
-    http::GeoHubResponse::Ok("".into())
+    http::return_ok("".into())
 }
 
 /// Ingest GeoJSON.
@@ -256,7 +256,7 @@ fn log_json(
     name: String,
     secret: Option<String>,
     body: rocket_contrib::json::Json<types::LogLocations>,
-) -> http::GeoHubResponse {
+) -> http::GeoHubResponder {
     // Check that secret and client name are legal.
     if !ids::name_and_secret_acceptable(name.as_str(), secret.as_ref().map(|s| s.as_str())) {
         return http::bad_request(
@@ -293,7 +293,7 @@ fn log_json(
     }
 
     if errs.is_empty() {
-        http::GeoHubResponse::Ok("".into())
+        http::return_ok("".into())
     } else {
         let errstring = errs
             .into_iter()
@@ -302,7 +302,7 @@ fn log_json(
             .collect::<Vec<String>>()
             .join(";");
         eprintln!("Couldn't write points: {}", errstring);
-        http::GeoHubResponse::Ok(errstring)
+        http::server_error(errstring)
     }
 }
 
