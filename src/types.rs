@@ -1,6 +1,10 @@
+use gpx::{self, Gpx};
+use geo_types::Point;
+
 /// Non-JSON plain point representation. Flat and representing a database row.
 #[derive(Debug, Clone)]
 pub struct GeoPoint {
+    pub id: Option<i32>,
     pub lat: f64,
     pub long: f64,
     pub spd: Option<f64>,
@@ -10,6 +14,19 @@ pub struct GeoPoint {
     pub note: Option<String>,
 }
 
+impl GeoPoint {
+    fn to_gpx_waypoint(self) -> gpx::Waypoint {
+        let mut wp = gpx::Waypoint::new(Point::new(self.long, self.lat));
+        wp.elevation = self.ele;
+        wp.speed = self.spd;
+        wp.time = Some(self.time);
+        wp.comment = self.note;
+        wp.hdop = self.accuracy;
+        wp
+    }
+}
+
+/// Returned by the retrieve/live endpoint.
 #[derive(serde::Serialize, Debug)]
 pub struct LiveUpdate {
     #[serde(rename = "type")]
@@ -77,7 +94,7 @@ pub struct GeoFeature {
 pub struct GeoJSON {
     #[serde(rename = "type")]
     typ: String, // always "FeatureCollection"
-    features: Vec<GeoFeature>,
+    pub features: Vec<GeoFeature>,
 }
 
 impl GeoJSON {
@@ -95,11 +112,30 @@ impl GeoJSON {
     }
 }
 
-pub fn geofeature_from_point(id: Option<i32>, point: GeoPoint) -> GeoFeature {
+pub fn geojson_from_points(points: Vec<GeoPoint>) -> GeoJSON {
+    let mut gj = GeoJSON::new();
+    gj.features = points.into_iter().map(geofeature_from_point).collect();
+    return gj;
+}
+
+pub fn gpx_track_from_points(points: Vec<GeoPoint>) -> Gpx {
+    let waypoints = points.into_iter().map(GeoPoint::to_gpx_waypoint).collect();
+
+    let mut track_segment = gpx::TrackSegment::new();
+    track_segment.points = waypoints;
+    let mut track = gpx::Track::new();
+    track.segments = vec![track_segment];
+    let mut gx = Gpx::default();
+    gx.tracks = vec![track];
+    gx.version = gpx::GpxVersion::Gpx10;
+    gx
+}
+
+pub fn geofeature_from_point(point: GeoPoint) -> GeoFeature {
     GeoFeature {
         typ: "Feature".into(),
         properties: GeoProperties {
-            id: id,
+            id: point.id,
             time: point.time,
             altitude: point.ele,
             speed: point.spd,
@@ -117,6 +153,7 @@ pub fn geopoint_from_feature(feat: GeoFeature) -> GeoPoint {
     let geo = feat.geometry;
     let prop = feat.properties;
     GeoPoint {
+        id: prop.id,
         accuracy: prop.accuracy,
         ele: prop.altitude,
         long: geo.coordinates.0,

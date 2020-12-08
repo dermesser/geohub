@@ -178,6 +178,9 @@ Installing GeoHub is quite easy. You need
     }
 ```
 
+Finally, make a copy of `Rocket.toml.example` to `Rocket.toml`, adapt for your
+needs, and run `cargo run --release`.
+
 ## Usage
 
 ![Map data © OpenStreetMap contributors, CC-BY-SA, Imagery © MapBox](examples/livemap.png)

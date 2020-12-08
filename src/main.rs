@@ -33,7 +33,8 @@ fn retrieve_last(
         secret
     };
     let db = db::DBQuery(&db.0);
-    if let Some((geojson, newlast)) = db.check_for_new_rows(&client, &secret, &last, &limit) {
+    if let Some((points, newlast)) = db.check_for_new_rows(&client, &secret, &last, &limit) {
+        let geojson = types::geojson_from_points(points);
         rocket_contrib::json::Json(types::LiveUpdate::new(
             client,
             Some(newlast),
@@ -90,11 +91,58 @@ fn retrieve_json(
     limit: Option<i64>,
     last: Option<i32>,
 ) -> http::GeoHubResponse {
+    let result = common_retrieve(db, client, secret, from, to, limit, last);
+    match result {
+        Ok(points) => {
+            let json = types::geojson_from_points(points);
+            http::return_json(&json)
+        }
+        Err(e) => e,
+    }
+}
+
+/// Retrieve GPX data.
+#[rocket::get("/geo/<client>/retrieve/gpx?<secret>&<from>&<to>&<limit>&<last>")]
+fn retrieve_gpx(
+    db: db::DBConn,
+    client: String,
+    secret: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    limit: Option<i64>,
+    last: Option<i32>,
+) -> http::GeoHubResponse {
+    let result = common_retrieve(db, client, secret, from, to, limit, last);
+    match result {
+        Ok(points) => {
+            let gx = types::gpx_track_from_points(points);
+            let mut serialized = vec![];
+            if let Err(he) = gpx::write(&gx, &mut serialized).map_err(http::server_error) {
+                return he;
+            }
+            match String::from_utf8(serialized) {
+                Ok(xml) => http::return_xml(xml),
+                Err(e) => http::server_error(e),
+            }
+        }
+        Err(e) => e,
+    }
+}
+
+fn common_retrieve(
+    db: db::DBConn,
+    client: String,
+    secret: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    limit: Option<i64>,
+    last: Option<i32>,
+) -> Result<Vec<types::GeoPoint>, http::GeoHubResponse> {
     if !ids::name_and_secret_acceptable(client.as_str(), secret.as_ref().map(|s| s.as_str())) {
-        return http::bad_request(
+        return Err(http::bad_request(
             "You have supplied an invalid secret or client. Both must be ASCII alphanumeric strings."
                 .into(),
-        );
+        ));
     }
     let secret = if let Some(secret) = secret {
         if secret.is_empty() {
@@ -116,11 +164,10 @@ fn retrieve_json(
         .and_then(util::flexible_timestamp_parse)
         .unwrap_or(chrono::Utc::now());
     let limit = limit.unwrap_or(16384);
-
-    let result = db.retrieve_json(client.as_str(), from_ts, to_ts, &secret, limit, last);
+    let result = db.retrieve(client.as_str(), from_ts, to_ts, &secret, limit, last);
     match result {
-        Ok(json) => http::return_json(&json),
-        Err(e) => http::server_error(e.to_string()),
+        Ok(points) => Ok(points),
+        Err(e) => Err(http::server_error(e.to_string())),
     }
 }
 
@@ -183,6 +230,7 @@ fn log(
     };
 
     let point = types::GeoPoint {
+        id: None,
         lat: lat,
         long: longitude,
         time: ts,
@@ -290,7 +338,15 @@ fn main() {
         ))
         .mount(
             "/",
-            rocket::routes![log, log_json, retrieve_json, retrieve_last, retrieve_live, assets],
+            rocket::routes![
+                log,
+                log_json,
+                retrieve_json,
+                retrieve_gpx,
+                retrieve_last,
+                retrieve_live,
+                assets
+            ],
         )
         .launch();
 }

@@ -1,13 +1,10 @@
 GENERAL
 
 * UI
- * livemap: show circle radius by accuracy
- * livemap: show time of last update
+    * livemap: link to GPX/GeoJSON export.
 * API
 
 FEATURES
-
-* GPX/json export (with UI + API)
 
 BUGS
 

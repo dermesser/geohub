@@ -198,12 +198,13 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
 
             // These queries use the primary key index returning one row only and will be quite fast.
             let rows = db.check_for_new_rows(client.as_str(), &secret, &None, &Some(nrows.unwrap_or(1)));
-            if let Some((geo, last)) = rows {
+            if let Some((points, last)) = rows {
+                let geojson = types::geojson_from_points(points);
                 for request in clients.remove(&client_id).unwrap_or(vec![]) {
                     request
                         .respond
                         .send(NotifyResponse {
-                            geo: Some(geo.clone()),
+                            geo: Some(geojson.clone()),
                             last: Some(last),
                         })
                         .ok();

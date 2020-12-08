@@ -9,7 +9,7 @@ pub struct DBQuery<'a>(pub &'a postgres::Connection);
 
 impl<'a> DBQuery<'a> {
     /// Fetch records and format as JSON
-    pub fn retrieve_json(
+    pub fn retrieve(
         &self,
         name: &str,
         from_ts: chrono::DateTime<chrono::Utc>,
@@ -17,15 +17,14 @@ impl<'a> DBQuery<'a> {
         secret: &Option<String>,
         limit: i64,
         last: Option<i32>,
-    ) -> Result<types::GeoJSON, postgres::Error> {
-        let mut returnable = types::GeoJSON::new();
+    ) -> Result<Vec<types::GeoPoint>, postgres::Error> {
         let stmt = self.0.prepare_cached(
             r"SELECT id, t, lat, long, spd, ele, note, accuracy FROM geohub.geodata
         WHERE (client = $1) and (t between $2 and $3) AND (secret = public.digest($4, 'sha256') or secret is null) AND (id > $5)
         ORDER BY t ASC
         LIMIT $6").unwrap(); // Must succeed.
         let rows = stmt.query(&[&name, &from_ts, &to_ts, &secret, &last.unwrap_or(0), &limit])?;
-        returnable.reserve_features(rows.len());
+        let mut returnable = Vec::with_capacity(rows.len());
         for row in rows.iter() {
             let (id, ts, lat, long, spd, ele, note, acc) = (
                 row.get(0),
@@ -38,6 +37,7 @@ impl<'a> DBQuery<'a> {
                 row.get(7),
             );
             let point = types::GeoPoint {
+                id: id,
                 lat: lat,
                 long: long,
                 spd: spd,
@@ -46,7 +46,7 @@ impl<'a> DBQuery<'a> {
                 note: note,
                 time: ts,
             };
-            returnable.push_feature(types::geofeature_from_point(id, point));
+            returnable.push(point);
         }
         Ok(returnable)
     }
@@ -81,8 +81,7 @@ impl<'a> DBQuery<'a> {
         secret: &Option<String>,
         last: &Option<i32>,
         limit: &Option<i64>,
-    ) -> Option<(types::GeoJSON, i32)> {
-        let mut returnable = types::GeoJSON::new();
+    ) -> Option<(Vec<types::GeoPoint>, i32)> {
         let check_for_new = self.0.prepare_cached(
             r"SELECT id, t, lat, long, spd, ele, note, accuracy FROM geohub.geodata
             WHERE (client = $1) and (id > $2) AND (secret = public.digest($3, 'sha256') or secret is null)
@@ -92,11 +91,12 @@ impl<'a> DBQuery<'a> {
         let last = last.unwrap_or(0);
         let limit = limit.unwrap_or(256);
 
+        let mut returnable = vec![];
         let rows = check_for_new.query(&[&name, &last, &secret, &limit]);
         if let Ok(rows) = rows {
             // If there are unknown entries, return those.
             if rows.len() > 0 {
-                returnable.reserve_features(rows.len());
+                returnable.reserve(rows.len());
                 let mut last = 0;
 
                 for row in rows.iter() {
@@ -111,6 +111,7 @@ impl<'a> DBQuery<'a> {
                         row.get(7),
                     );
                     let point = types::GeoPoint {
+                        id: Some(id),
                         time: ts,
                         lat: lat,
                         long: long,
@@ -119,7 +120,7 @@ impl<'a> DBQuery<'a> {
                         note: note,
                         accuracy: acc,
                     };
-                    returnable.push_feature(types::geofeature_from_point(Some(id), point));
+                    returnable.push(point);
                     if id > last {
                         last = id;
                     }
