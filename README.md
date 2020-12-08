@@ -92,6 +92,12 @@ number of entries returned>&last=<id of last known entry>`
   know. GeoHub will only return events newer than this. The IDs used here are
   returned as property `id` in the GeoJSON `Feature`s.
   * Returns a GeoJSON object.
+* `GET` `/geo/<client>/retrieve/gpx?secret=<secret>&from=<from_timestamp>&to=<to_timestamp>&limit=<maximum
+number of entries returned>&last=<id of last known entry>`
+  * Fetch geo data as GPX document (`application/gpx+xml`).
+  * This endpoint has the same parameters as the `retrieve/json` endpoint. It
+  returns a GPX document containing one Track consisting of one Track Segment.
+  The GPX version is 1.0.
 * `GET` `/geo/<client>/retrieve/last?secret=<secret>&last=<last ID>&limit=<max
 entries>`
   * Fetch most recent points for the `client`. See `/geo/<client>/retrieve/json`
