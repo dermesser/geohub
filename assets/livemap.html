@@ -17,7 +17,8 @@
         </span>
     </div>
     <div id="infoFields" class="timeChanged">
-        Last Update: <span id="outputLastUpdate"> </span>
+        <b>Last Update:</b> <span id="outputLastUpdate"> </span>
+        <b>Download:</b> <a href="" id="gpxDownloadLink">GPX</a> <a href="" id="jsonDownloadLink">JSON</a>
     </div>
 
     <div id="mapid"> </div>
@@ -174,6 +175,14 @@
             timefield.textContent = (new Date(time)).toString().replace(/\([\w\s]+\)/,'');
         }
     }
+    function updateLinks() {
+        var gpxLink = document.getElementById('gpxDownloadLink');
+        var jsonLink = document.getElementById('jsonDownloadLink');
+        var client = getClient();
+        var secret = getSecret();
+        gpxLink.href = `../${client}/retrieve/gpx?secret=${secret}`;
+        jsonLink.href = `../${client}/retrieve/json?secret=${secret}`;
+    }
     // "Go!" was clicked - clear markers and fetch data for new source.
     function buttonGoClicked() {
         clearAllMarkers();
@@ -181,12 +190,12 @@
             lastXHR.abort();
         }
         updateURL(getClient(), getSecret());
+        updateLinks();
         // Accelerate display.
         backfill();
     }
 
-    getClient();
-    getSecret();
+    updateLinks();
     // Once data is backfilled, we wait for the update.
     backfill();
 
