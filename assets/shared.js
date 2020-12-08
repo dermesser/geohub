@@ -1,3 +1,5 @@
+var urlParams = new URLSearchParams(window.location.search);
+
 // Figure out client/secret from URL and/or UI field. Update UI field with URL value
 // available.
 function getClient() {
@@ -22,7 +24,10 @@ function getSecret() {
     }
     return userSecret ? userSecret : '';
 }
-
+function getLimit() {
+    var limit = urlParams.get('limit');
+    return limit ? limit : 256;
+}
 
 // Update URL from client/secret.
 function updateURL(client, secret) {

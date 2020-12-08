@@ -39,7 +39,6 @@
         accessToken: accessToken,
     }).addTo(mymap);
 
-    var urlParams = new URLSearchParams(window.location.search);
     var url = new URL(window.location);
     var allMarkers = [];
 
@@ -135,7 +134,8 @@
         if (!client) {
             return;
         }
-        var url = `../../geo/${client}/retrieve/last?secret=${secret}&limit=256`;
+        var limit = getLimit();
+        var url = `../../geo/${client}/retrieve/last?secret=${secret}&limit=${limit}`;
         console.log('Requesting URL (backfill) ' + url);
         xhr.responseType = 'json';
         xhr.open('GET', url, true);
