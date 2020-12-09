@@ -163,7 +163,7 @@ fn common_retrieve(
     let to_ts = to
         .and_then(util::flexible_timestamp_parse)
         .unwrap_or(chrono::Utc::now());
-    let limit = limit.unwrap_or(16384);
+    let limit = limit.unwrap_or(1 << 16); // 65536
     let result = db.retrieve(client.as_str(), from_ts, to_ts, &secret, limit, last);
     match result {
         Ok(points) => Ok(points),
