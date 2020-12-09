@@ -1,8 +1,9 @@
 GENERAL
 
 * UI
-    * livemap: link to GPX/GeoJSON export.
 * API
+* MANAGEMENT
+    * Write systemd unit files
 
 FEATURES
 
