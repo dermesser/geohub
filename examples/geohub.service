@@ -1,0 +1,18 @@
+[Unit]
+Description=A Real Time Geo Data Framework
+
+After=network.target
+Wants=postgresql.service
+
+[Service]
+Type=exec
+ExecStart=/usr/local/bin/geohub
+KillMode=process
+Restart=on-failure
+
+# Make sure that Rocket.toml is in the working directory.
+WorkingDirectory=/home/user/somewhere
+User=youruser
+
+[Install]
+WantedBy=multi-user.target
