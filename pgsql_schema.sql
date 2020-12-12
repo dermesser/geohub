@@ -34,7 +34,7 @@ CREATE TABLE geohub.geodata (
     spd double precision,
     accuracy double precision,
     t timestamp with time zone not null,
-    ele double precision
+    ele double precision,
     secret bytea,
     note text
 );
