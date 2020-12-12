@@ -21,7 +21,7 @@ def format_server_time(servertime):
 def send_point(args, info: dict[str, str]):
     geohub_templ = args.geohub + '/{CLIENT}/log?secret={SECRET}'
     geohub_url = geohub_templ.format(HOST=args.geohub_host, CLIENT=args.client or info.get('tzn', 'TRAIN'), SECRET=args.secret, PROTOCOL=args.geohub_scheme)
-    additional = '&lat={lat}&longitude={long}&spd={spd}&time={ts}'.format(
+    additional = '&lat={lat}&longitude={long}&s={spd}&time={ts}'.format(
             lat=info['latitude'], long=info['longitude'], spd=info['speed'], ts=format_server_time(info['serverTime']))
     # Delete unnecessary data.
     for k in ['latitude', 'longitude', 'speed', 'serverTime']:
