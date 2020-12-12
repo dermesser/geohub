@@ -1,9 +1,9 @@
 GENERAL
 
 * UI
+    * Track manager UI with list of tracks etc. per user/client
 * API
 * MANAGEMENT
-    * Write systemd unit files
 
 FEATURES
 
