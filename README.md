@@ -180,7 +180,7 @@ Installing GeoHub is quite easy. You need
     # This will strip the /geo/ prefix, so add it back below. Adapt to your
     # preferred URL scheme.
     location /geo/ {
-        proxy_pass http://localhost:8000/geo/;
+        proxy_pass http://127.0.0.1:8000/geo/;
     }
 ```
 
@@ -199,6 +199,8 @@ This also allows you to immediately use the `livemap` app at
 `https://yourhost.com/geo/assets/livemap.html`, which consists of a single HTML
 page, a CSS file, and the leaflet.js library (which is included). - latter is
 (c) 2010-2019 Vladimir Agafonkin, (c) 2010-2011 CloudMade.
+
+It displays live location data as it is ingested, in real time.
 
 ## Ingestion
 
