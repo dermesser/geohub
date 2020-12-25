@@ -18,7 +18,7 @@ def fetch_current(api):
 def format_server_time(servertime):
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(servertime/1000))
 
-def send_point(args, info: dict[str, str]):
+def send_point(sess, args, info: dict[str, str]):
     geohub_templ = args.geohub + '/{CLIENT}/log?secret={SECRET}'
     geohub_url = geohub_templ.format(HOST=args.geohub_host, CLIENT=args.client or info.get('tzn', 'TRAIN'), SECRET=args.secret, PROTOCOL=args.geohub_scheme)
     additional = '&lat={lat}&longitude={long}&s={spd}&time={ts}'.format(
@@ -27,7 +27,7 @@ def send_point(args, info: dict[str, str]):
     for k in ['latitude', 'longitude', 'speed', 'serverTime']:
         info.pop(k)
     url = geohub_url + additional
-    requests.post(url, json=info)
+    sess.post(url, json=info)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Fetch and send train data')
@@ -52,11 +52,13 @@ def run(args):
     eprint('Running in train:', tzn)
     eprint('Go to LiveMap:', livemap_url);
 
+    session = requests.Session()
+
     with open(args.outfile, 'w') as outfile:
         while True:
             if info:
                 eprint('{} :: Sending point ({}, {}) to GeoHub.'.format(format_server_time(info['serverTime']), info['longitude'], info['latitude']))
-                send_point(args, info)
+                send_point(session, args, info)
                 outfile.write(json.dumps(info))
                 outfile.write('\n')
             else:
