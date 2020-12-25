@@ -18,6 +18,7 @@
     </div>
     <div id="infoFields" class="timeChanged">
         <b>Last Update:</b> <span id="outputLastUpdate"> </span>
+        <b>Speed:</b> <span id="outputSpeed">0</span>&nbsp;km/h
         <b>Download:</b> <a href="" id="gpxDownloadLink">GPX</a> <a href="" id="jsonDownloadLink">JSON</a>
     </div>
 
@@ -116,7 +117,7 @@
                 mymap.setView([coords[1], coords[0]], mapZoomed ? mymap.getZoom() : 13);
                 mapZoomed = true;
 
-                updateUI(lastfeature.properties.time);
+                updateUI(lastfeature.properties.time, lastfeature.properties);
             }
 
             // Install next XHR.
@@ -164,7 +165,7 @@
         lastXHR = xhr;
     }
 
-    function updateUI(time) {
+    function updateUI(time, locProperties) {
         if (time) {
             var timefield = document.getElementById('outputLastUpdate');
             var infofields = document.getElementById('infoFields');
@@ -173,6 +174,12 @@
             infofields.offsetHeight;
             infofields.style.animation = null;
             timefield.textContent = (new Date(time)).toString().replace(/\([\w\s]+\)/,'');
+        }
+        let speedField = document.getElementById('outputSpeed');
+        if (locProperties && locProperties.speed) {
+            speedField.textContent = locProperties.speed.toString();
+        } else {
+            speedField.textContent = '0';
         }
     }
     function updateLinks() {
