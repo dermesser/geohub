@@ -29,10 +29,10 @@ pub fn flexible_timestamp_parse(ts: String) -> Option<chrono::DateTime<chrono::U
 
 pub fn to_kph(unit: &str, num: f64) -> Result<f64, http::GeoHubResponder> {
     match unit {
-        "mps" | "ms" | "m/s" => Ok(3.6*num),
+        "mps" | "ms" | "m/s" => Ok(3.6 * num),
         "kmh" | "km/h" | "kph" => Ok(num),
-        "mph" => Ok(1.601*num),
-        "kn" | "knots" => Ok(1.852*num),
-        _ => Err(http::bad_request(format!("Unknown unit '{}'", unit)))
+        "mph" => Ok(1.601 * num),
+        "kn" | "knots" => Ok(1.852 * num),
+        _ => Err(http::bad_request(format!("Unknown unit '{}'", unit))),
     }
 }

@@ -1,5 +1,5 @@
-use gpx::{self, Gpx};
 use geo_types::Point;
+use gpx::{self, Gpx};
 
 /// Non-JSON plain point representation. Flat and representing a database row.
 #[derive(Debug, Clone)]

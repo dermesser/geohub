@@ -1,4 +1,3 @@
-
 use crate::db;
 use crate::types;
 
@@ -197,7 +196,8 @@ pub fn live_notifier_thread(rx: mpsc::Receiver<NotifyRequest>, db: postgres::Con
             unlisten(db.0, client.as_str(), &secret).ok();
 
             // These queries use the primary key index returning one row only and will be quite fast.
-            let rows = db.check_for_new_rows(client.as_str(), &secret, &None, &Some(nrows.unwrap_or(1)));
+            let rows =
+                db.check_for_new_rows(client.as_str(), &secret, &None, &Some(nrows.unwrap_or(1)));
             if let Some((points, last)) = rows {
                 let geojson = types::geojson_from_points(points);
                 for request in clients.remove(&client_id).unwrap_or(vec![]) {
