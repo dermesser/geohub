@@ -9,6 +9,7 @@ Type=exec
 ExecStart=/usr/local/bin/geohub
 KillMode=process
 Restart=on-failure
+RestartSec=5
 
 # Make sure that Rocket.toml is in the working directory.
 WorkingDirectory=/home/user/somewhere
