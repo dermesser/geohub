@@ -44,6 +44,8 @@ logged with this secret.
   free to do so. **Optional**.
   * `elevation`: Elevation in meters. **Optional**.
   * `accuracy`: Accuracy in meters. **Optional**
+  * `unit`: If given, convert the number given for `&s=` into `km/h` for
+  storage, assuming the given unit. Can be: kn/knots, mph, mps/ms/'m/s', kmh/'km/h'/kph.
   * A body -- if present and encoded in whatever content-type -- is attached as `note` to the
   point and returned as property `note` of GeoJSON points later.
   * Usually returns code **200** except for server errors (500) or malformed inputs (400).

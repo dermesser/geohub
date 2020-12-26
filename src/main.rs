@@ -178,7 +178,7 @@ fn common_retrieve(
 /// time is like 2020-11-30T20:12:36.444Z (ISO 8601). By default, server time is set.
 /// secret can be used to protect points.
 #[rocket::post(
-    "/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>&<secret>&<accuracy>",
+    "/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>&<secret>&<accuracy>&<unit>",
     data = "<note>"
 )]
 fn log(
@@ -192,6 +192,7 @@ fn log(
     s: Option<f64>,
     ele: Option<f64>,
     accuracy: Option<f64>,
+    unit: Option<String>,
     note: rocket::data::Data,
 ) -> http::GeoHubResponder {
     // Check that secret and client name are legal.
@@ -228,6 +229,15 @@ fn log(
         }
         Err(e) => return e,
     };
+
+    // Convert speed if needed.
+    let mut s = s;
+    if let (Some(u), Some(speed)) = (unit.as_ref(), s) {
+        match util::to_kph(u.as_str(), speed) {
+            Ok(speed) => s = Some(speed),
+            Err(e) => return e,
+        }
+    }
 
     let point = types::GeoPoint {
         id: None,

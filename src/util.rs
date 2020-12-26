@@ -2,6 +2,8 @@ use chrono;
 
 use chrono::TimeZone;
 
+use crate::http;
+
 /// Parse timestamps flexibly. Without any zone information, UTC is assumed.
 pub fn flexible_timestamp_parse(ts: String) -> Option<chrono::DateTime<chrono::Utc>> {
     let fmtstrings = &[
@@ -23,4 +25,14 @@ pub fn flexible_timestamp_parse(ts: String) -> Option<chrono::DateTime<chrono::U
         }
     }
     None
+}
+
+pub fn to_kph(unit: &str, num: f64) -> Result<f64, http::GeoHubResponder> {
+    match unit {
+        "mps" | "ms" | "m/s" => Ok(3.6*num),
+        "kmh" | "km/h" | "kph" => Ok(num),
+        "mph" => Ok(1.601*num),
+        "kn" | "knots" => Ok(1.852*num),
+        _ => Err(http::bad_request(format!("Unknown unit '{}'", unit)))
+    }
 }

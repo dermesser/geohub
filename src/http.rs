@@ -24,9 +24,13 @@ pub enum GeoHubResponse {
 
 fn content_disposition(attachment: bool) -> rocket::http::hyper::header::ContentDisposition {
     rocket::http::hyper::header::ContentDisposition {
-            disposition: if attachment { rocket::http::hyper::header::DispositionType::Attachment } else { rocket::http::hyper::header::DispositionType::Inline },
-            parameters: vec![],
-        }
+        disposition: if attachment {
+            rocket::http::hyper::header::DispositionType::Attachment
+        } else {
+            rocket::http::hyper::header::DispositionType::Inline
+        },
+        parameters: vec![],
+    }
 }
 
 pub fn return_ok(s: String) -> GeoHubResponder {
@@ -83,12 +87,8 @@ pub fn read_data(d: rocket::Data, limit: u64) -> Result<String, GeoHubResponder>
     let mut ds = d.open().take(limit);
     let mut dest = Vec::with_capacity(limit as usize);
     if let Err(e) = std::io::copy(&mut ds, &mut dest) {
-        return Err(bad_request(format!(
-            "Error reading request: {}",
-            e
-        )));
+        return Err(bad_request(format!("Error reading request: {}", e)));
     }
 
-    String::from_utf8(dest)
-        .map_err(|e| bad_request(format!("Decoding error: {}", e)))
+    String::from_utf8(dest).map_err(|e| bad_request(format!("Decoding error: {}", e)))
 }
