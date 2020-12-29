@@ -13,12 +13,15 @@ function getClient() {
     }
     return userClient;
 }
+
+var secretFieldInitialized = false;
 function getSecret() {
     var inputSecret = document.getElementById('inputSecret');
     var userSecret = inputSecret.value;
     var urlSecret = urlParams.get('secret');
 
-    if (userSecret.length == 0) {
+    if (!secretFieldInitialized) {
+        secretFieldInitialized = true;
         inputSecret.value = urlSecret;
         return urlSecret ? urlSecret : '';
     }
