@@ -17,7 +17,8 @@
         </span>
     </div>
     <div id="infoFields" class="timeChanged">
-        <b>Last Update:</b> <span id="outputLastUpdate"> </span>
+        <!-- Replaced by tooltip. -->
+        <!--<b>Last Update:</b> <span id="outputLastUpdate"> </span>-->
         <b>Speed:</b> <span id="outputSpeed">0</span>&nbsp;km/h
         <b>Download:</b> <a href="" id="gpxDownloadLink">GPX</a> <a href="" id="jsonDownloadLink">JSON</a>
     </div>
@@ -48,7 +49,9 @@
     // a new point (former position).
     var current_marker = L.marker([0,0]).addTo(mymap);
     var current_circle = L.circle([0,0], {}).addTo(mymap);
-    function setCurrentLocation(lat, lng, accuracy) {
+    var current_props = {};
+    function setCurrentLocation(lat, lng, props) {
+        let accuracy = props.accuracy;
         var oldCoord = current_marker.getLatLng();
         current_marker.setLatLng(L.latLng(lat, lng));
         // Show accuracy of current location
@@ -59,20 +62,24 @@
             radius: accuracy ? accuracy : 3,
         };
         // Show last locations as blue points.
-        addMarker(oldCoord.lat, oldCoord.lng, current_circle.getRadius());
+        addMarker(oldCoord.lat, oldCoord.lng, current_props);
         current_circle.remove();
 
         current_circle = L.circle([lat, lng], currentCircleProps).addTo(mymap);
+        current_circle.bindTooltip((new Date(props.time)).toString());
+        current_circle.openTooltip();
+        current_props = props;
     }
-    function addMarker(lat, lng, accuracy) {
+    function addMarker(lat, lng, props) {
+        let accuracy = props.accuracy;
         const circleProps = {
             color: 'blue',
             fillColor: 'blue',
             fillOpacity: 0.1,
             radius: accuracy ? accuracy : 3,
         };
-        var circle = L.circle([lat, lng], circleProps);
-        circle.addTo(mymap);
+        var circle = L.circle([lat, lng], circleProps).addTo(mymap);
+        circle.bindTooltip((new Date(props.time)).toString());
         allMarkers.push(circle);
     }
 
@@ -106,14 +113,14 @@
                 if (features.length > 0) {
                     for (i = 1; i < features.length; i++) {
                         var coords = features[i]['geometry']['coordinates'];
-                        addMarker(coords[1], coords[0], features[i].properties.accuracy);
+                        addMarker(coords[1], coords[0], features[i].properties);
                     }
                 }
 
                 var coords = lastfeature['geometry']['coordinates'];
 
-                console.log('Received update:', coords, 'last:', response);
-                setCurrentLocation(coords[1], coords[0], lastfeature.properties.accuracy);
+                //console.log('Received update:', coords, 'last:', response);
+                setCurrentLocation(coords[1], coords[0], lastfeature.properties);
                 // 13 is a good default zoom for an updated point.
                 mymap.setView([coords[1], coords[0]], mapZoomed ? mymap.getZoom() : 13);
                 mapZoomed = true;
@@ -168,13 +175,13 @@
 
     function updateUI(time, locProperties) {
         if (time) {
-            var timefield = document.getElementById('outputLastUpdate');
             var infofields = document.getElementById('infoFields');
             // This dance restarts the green "update" animation.
             infofields.style.animation = 'none';
             infofields.offsetHeight;
             infofields.style.animation = null;
-            timefield.textContent = (new Date(time)).toString().replace(/\([\w\s]+\)/,'');
+            // var timefield = document.getElementById('outputLastUpdate');
+            // timefield.textContent = (new Date(time)).toString().replace(/\([\w\s]+\)/,'');
         }
         let speedField = document.getElementById('outputSpeed');
         if (locProperties && locProperties.speed) {
