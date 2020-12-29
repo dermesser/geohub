@@ -58,10 +58,11 @@
             fillOpacity: 0.1,
             radius: accuracy ? accuracy : 3,
         };
-        current_circle.remove();
-        current_circle = L.circle([lat, lng], currentCircleProps).addTo(mymap);
         // Show last locations as blue points.
-        addMarker(oldCoord.lat, oldCoord.lng, accuracy);
+        addMarker(oldCoord.lat, oldCoord.lng, current_circle.getRadius());
+        current_circle.remove();
+
+        current_circle = L.circle([lat, lng], currentCircleProps).addTo(mymap);
     }
     function addMarker(lat, lng, accuracy) {
         const circleProps = {
