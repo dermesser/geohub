@@ -67,7 +67,7 @@
         current_circle.remove();
 
         current_circle = L.circle([lat, lng], currentCircleProps).addTo(mymap);
-        current_circle.bindTooltip((new Date(props.time)).toString());
+        current_circle.bindTooltip(shortTimestamp(new Date(props.time)));
         current_circle.openTooltip();
         current_props = props;
     }
@@ -80,7 +80,7 @@
             radius: accuracy ? accuracy : 3,
         };
         var circle = L.circle([lat, lng], circleProps).addTo(mymap);
-        circle.bindTooltip((new Date(props.time)).toString());
+        circle.bindTooltip(shortTimestamp(new Date(props.time)));
         allMarkers.push(circle);
     }
 

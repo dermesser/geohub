@@ -53,3 +53,13 @@ function updateURL(client, secret) {
 
     window.history.pushState({}, "", url);
 }
+
+function shortTimestamp(date) {
+    var year = date.getFullYear();
+    var month = date.getMonth() + 1;
+    month = month < 10 ? `0${month}` : month;
+    var day = date.getDate();
+    day = day < 10 ? `0${day}` : day;
+    var dateStr = `${year}-${month}-${day}`;
+    return date.toLocaleTimeString('de-DE') + ', ' + dateStr;
+}
