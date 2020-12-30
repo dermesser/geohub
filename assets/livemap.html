@@ -2,20 +2,21 @@
     <head>
         <link rel="stylesheet" href="thirdparty/leaflet.css" />
         <link rel="stylesheet" href="style.css" />
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
         <title>GeoHub: LiveMap</title>
     </head>
     <body>
     <script src="thirdparty/leaflet.js"></script>
     <script src="shared.js"></script>
 
-        <span id="livemapTitle">GeoHub LiveMap</span>
-    <div>
-        <span id="inputFields">
-            Client: <input type="text" value="" id="inputClient" class="field" />
-            Secret: <input type="text" value="" id="inputSecret" class="field" />
-            <input type="button" value="Go!" id="inputGoButton" onclick="buttonGoClicked()" />
-        </span>
-    </div>
+    <span id="livemapTitle">GeoHub LiveMap</span>
+    <span id="inputFields">
+        <span id="inputField">Client: <input type="text" value="" id="inputClient" class="field" /></span>
+        <span id="inputField">Secret: <input type="text" value="" id="inputSecret" class="field" /></span>
+        <span id="inputFIeld"><input type="button" value="Go!" id="inputGoButton" onclick="buttonGoClicked()" /></span>
+    </span>
     <div id="infoFields" class="timeChanged">
         <!-- Replaced by tooltip. -->
         <!--<b>Last Update:</b> <span id="outputLastUpdate"> </span>-->

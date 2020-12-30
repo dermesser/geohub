@@ -1,18 +1,28 @@
 body {
     text-size: 120%;
+    padding: 0;
+    margin: 3px;
+}
+html, body {
+    height: 100vh;
+    width: 100vw;
 }
 .field {
-    width: 15em;
+    width: 10em;
+}
+#inputfield {
+    margin: 3px;
+    font-family: monospace;
 }
 #mapid {
-    height: 95%;
-    width: 95%;
+    height: 90vh;
+    width: 100%;
     margin: 5px;
 }
 #livemapTitle {
     color: blue;
     font-weight: bold;
-    margin-right: 3em;
+    margin-right: 1em;
 }
 #infoFields {
     border-style: solid;
@@ -28,4 +38,10 @@ body {
     animation-name: blinkonupdate;
     animation-duration: 2s;
     animation-iteration-count: 1;
+}
+
+@media (max-width: 675px) {
+    #inputfield {
+        display: block;
+    }
 }
