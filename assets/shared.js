@@ -63,3 +63,8 @@ function shortTimestamp(date) {
     var dateStr = `${year}-${month}-${day}`;
     return date.toLocaleTimeString('de-DE') + ', ' + dateStr;
 }
+function locationTooltip(properties) {
+    let date = shortTimestamp(new Date(properties.time));
+    let speed = properties.speed.toFixed(1);
+    return `${speed} km/h - ${date}`;
+}
