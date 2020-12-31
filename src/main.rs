@@ -262,13 +262,14 @@ fn log(
 }
 
 /// Ingest GeoJSON.
-#[rocket::post("/geo/<name>/logjson?<secret>&<datesecret>", data = "<body>")]
+#[rocket::post("/geo/<name>/logjson?<secret>&<datesecret>&<unit>", data = "<body>")]
 fn log_json(
     db: db::DBConn,
     notify_manager: rocket::State<notifier::NotifyManager>,
     name: String,
     secret: Option<String>,
     datesecret: Option<bool>,
+    unit: Option<String>,
     body: rocket_contrib::json::Json<types::LogLocations>,
 ) -> http::GeoHubResponder {
     // Check that secret and client name are legal.
@@ -298,7 +299,15 @@ fn log_json(
     // Due to prepared statements, this isn't as bad as it looks.
     let mut errs = vec![];
     for feat in geofeats {
-        let point = types::geopoint_from_feature(feat);
+        let mut point = types::geopoint_from_feature(feat);
+
+        if let (Some(u), Some(speed)) = (unit.as_ref(), point.spd) {
+            match util::to_kph(u.as_str(), speed) {
+                Ok(speed) => point.spd = Some(speed),
+                Err(e) => return e,
+            }
+        }
+
         if let Err(e) = db.log_geopoint(name.as_str(), &secret, &point) {
             errs.push(e);
         }

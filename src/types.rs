@@ -7,7 +7,7 @@ pub struct GeoPoint {
     pub id: Option<i32>,
     pub lat: f64,
     pub long: f64,
-    pub spd: Option<f64>,
+    pub spd: Option<f64>, // in km/h by convention
     pub ele: Option<f64>,
     pub accuracy: Option<f64>,
     pub time: chrono::DateTime<chrono::Utc>,
