@@ -46,12 +46,18 @@ logged with this secret.
   * `accuracy`: Accuracy in meters. **Optional**
   * `unit`: If given, convert the number given for `&s=` into `km/h` for
   storage, assuming the given unit. Can be: kn/knots, mph, mps/ms/'m/s', kmh/'km/h'/kph.
+  * `datesecret`: If `true`, automatically set the secret to `YYYYmmdd` (e.g. `20210405`).
+  Useful if you want daily tracks with different secrets, but don't care about
+  actual secrecy. Based on the sent time or UTC if no time was sent.
   * A body -- if present and encoded in whatever content-type -- is attached as `note` to the
   point and returned as property `note` of GeoJSON points later.
   * Usually returns code **200** except for server errors (500) or malformed inputs (400).
 * `POST` `/geo/<client>/logjson?secret=<secret>` with body: `application/json`.
   * Log one or more new points.
   * `client` and `secret` have the semantics described above.
+  * `datesecret`: If `true`, automatically set the secret to `YYYYmmdd` (e.g. `20210405`).
+  Useful if you want daily tracks with different secrets, but don't care about
+  actual secrecy. Based on UTC.
   * The body is expected to be a JSON document structured like the following
   example -- a single field `locations` containing a list of GeoJSON `Feature`s.
 
