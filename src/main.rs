@@ -178,7 +178,7 @@ fn common_retrieve(
 /// time is like 2020-11-30T20:12:36.444Z (ISO 8601). By default, server time is set.
 /// secret can be used to protect points.
 #[rocket::post(
-    "/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>&<secret>&<accuracy>&<unit>",
+    "/geo/<name>/log?<lat>&<longitude>&<time>&<s>&<ele>&<secret>&<accuracy>&<unit>&<datesecret>",
     data = "<note>"
 )]
 fn log(
@@ -193,6 +193,7 @@ fn log(
     ele: Option<f64>,
     accuracy: Option<f64>,
     unit: Option<String>,
+    datesecret: Option<bool>,
     note: rocket::data::Data,
 ) -> http::GeoHubResponder {
     // Check that secret and client name are legal.
@@ -202,21 +203,23 @@ fn log(
                 .into(),
         );
     }
+    let mut ts = chrono::Utc::now();
+    if let Some(time) = time {
+        ts = util::flexible_timestamp_parse(time).unwrap_or(ts);
+    }
+
     let secret = if let Some(secret) = secret {
         if secret.is_empty() {
             None
         } else {
             Some(secret)
         }
+    } else if let Some(true) = datesecret {
+        Some(format!("{}", ts.date().format("%Y%m%d")))
     } else {
         secret
     };
     let db = db::DBQuery(&db.0);
-
-    let mut ts = chrono::Utc::now();
-    if let Some(time) = time {
-        ts = util::flexible_timestamp_parse(time).unwrap_or(ts);
-    }
 
     // Length-limit notes.
     let note = match http::read_data(note, 4096) {
@@ -259,12 +262,13 @@ fn log(
 }
 
 /// Ingest GeoJSON.
-#[rocket::post("/geo/<name>/logjson?<secret>", data = "<body>")]
+#[rocket::post("/geo/<name>/logjson?<secret>&<datesecret>", data = "<body>")]
 fn log_json(
     db: db::DBConn,
     notify_manager: rocket::State<notifier::NotifyManager>,
     name: String,
     secret: Option<String>,
+    datesecret: Option<bool>,
     body: rocket_contrib::json::Json<types::LogLocations>,
 ) -> http::GeoHubResponder {
     // Check that secret and client name are legal.
@@ -280,6 +284,9 @@ fn log_json(
         } else {
             Some(secret)
         }
+    } else if let Some(true) = datesecret {
+        let ts = chrono::Utc::now();
+        Some(format!("{}", ts.date().format("%Y%m%d")))
     } else {
         secret
     };
