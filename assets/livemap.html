@@ -55,6 +55,7 @@
         let accuracy = props.accuracy;
         var oldCoord = current_marker.getLatLng();
         current_marker.setLatLng(L.latLng(lat, lng));
+        console.log(current_marker);
         // Show accuracy of current location
         const currentCircleProps = {
             color: 'aqua',
@@ -82,7 +83,6 @@
             radius: accuracy ? accuracy : 3,
         };
         var circle = L.circle([lat, lng], circleProps).addTo(mymap);
-        console.log(props);
         circle.bindTooltip(locationTooltip(props));
         allMarkers.push(circle);
     }
@@ -94,6 +94,7 @@
         }
         current_marker.remove();
         current_circle.remove();
+        current_marker = L.marker([0,0]).addTo(mymap);
     }
 
     // New points are available. Display them on the map and update the marker.
@@ -119,14 +120,13 @@
                 if (features.length > 0) {
                     for (i = 1; i < features.length; i++) {
                         var coords = features[i]['geometry']['coordinates'];
-                        console.log('features:', i, features[i].properties);
                         addMarker(coords[1], coords[0], features[i].properties);
                     }
                 }
 
                 var coords = lastfeature['geometry']['coordinates'];
 
-                //console.log('Received update:', coords, 'last:', response);
+                console.log('Received update:', coords, 'last:', response);
                 setCurrentLocation(coords[1], coords[0], lastfeature.properties);
                 // 13 is a good default zoom for an updated point.
                 mymap.setView([coords[1], coords[0]], mapZoomed ? mymap.getZoom() : 13);
