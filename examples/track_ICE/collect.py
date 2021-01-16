@@ -12,8 +12,8 @@ import time
 def eprint(*args):
     print(*args, file=sys.stderr)
 
-def fetch_current(api):
-    return requests.get(api).json()
+def fetch_current(sess, api):
+    return sess.get(api).json()
 
 def format_server_time(servertime):
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(servertime/1000))
@@ -42,7 +42,8 @@ def parse_args():
     return parser.parse_args()
 
 def run(args):
-    info = fetch_current(args.api)
+    session = requests.Session()
+    info = fetch_current(session, args.api)
     if not info:
         eprint('Empty info received!')
         return
@@ -52,13 +53,11 @@ def run(args):
     eprint('Running in train:', tzn)
     eprint('Go to LiveMap:', livemap_url);
 
-    session = requests.Session()
-
     lastpoint = None
 
     with open(args.outfile, 'w') as outfile:
         while True:
-            info = fetch_current(args.api)
+            info = fetch_current(session, args.api)
             if lastpoint is None or lastpoint != (info['latitude'], info['longitude']):
                 lastpoint = (info['latitude'], info['longitude'])
                 if info:
