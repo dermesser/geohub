@@ -54,17 +54,23 @@ def run(args):
 
     session = requests.Session()
 
+    lastpoint = None
+
     with open(args.outfile, 'w') as outfile:
         while True:
-            if info:
-                eprint('{} :: Sending point ({}, {}) to GeoHub.'.format(format_server_time(info['serverTime']), info['longitude'], info['latitude']))
-                send_point(session, args, info)
-                outfile.write(json.dumps(info))
-                outfile.write('\n')
-            else:
-                eprint('{} :: Skipped point due to no API response.'.format(format_server_time(time.time_ns()/1e6)))
-            time.sleep(args.interval)
             info = fetch_current(args.api)
+            if lastpoint is None or lastpoint != (info['latitude'], info['longitude']):
+                lastpoint = (info['latitude'], info['longitude'])
+                if info:
+                    eprint('{} :: Sending point ({}, {}) to GeoHub.'.format(format_server_time(info['serverTime']), info['longitude'], info['latitude']))
+                    send_point(session, args, info)
+                    outfile.write(json.dumps(info))
+                    outfile.write('\n')
+                else:
+                    eprint('{} :: Skipped point due to no API response.'.format(format_server_time(time.time_ns()/1e6)))
+            else:
+                eprint('{} :: Skipped duplicate point.'.format(format_server_time(time.time_ns()/1e6)))
+            time.sleep(args.interval)
 
 def main():
     args = parse_args()
