@@ -126,7 +126,7 @@
 
                 var coords = lastfeature['geometry']['coordinates'];
 
-                console.log('Received update:', coords, 'last:', response);
+                //console.log('Received update:', coords, 'last:', response);
                 setCurrentLocation(coords[1], coords[0], lastfeature.properties);
                 // 13 is a good default zoom for an updated point.
                 mymap.setView([coords[1], coords[0]], mapZoomed ? mymap.getZoom() : 13);
@@ -172,7 +172,7 @@
         }
         var secretparam = secret == null ? '' : `secret=${secret}`;
         var url = `../../geo/${client}/retrieve/live?${secretparam}&timeout=30`;
-        console.log('Requesting URL ' + url);
+        //console.log('Requesting URL ' + url);
         xhr.responseType = 'json';
         xhr.open('GET', url, true);
         xhr.onreadystatechange = function() { xhrcallback(xhr) };

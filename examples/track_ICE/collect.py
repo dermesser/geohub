@@ -15,7 +15,7 @@ def eprint(*args):
 def fetch_current(sess, api):
     while True:
         try:
-            return sess.get(api).json()
+            return requests.get(api).json()
         except requests.exceptions.ConnectionError as e:
             eprint('Retrying failed request:', e)
             time.sleep(3)
