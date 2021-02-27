@@ -13,7 +13,12 @@ def eprint(*args):
     print(*args, file=sys.stderr)
 
 def fetch_current(sess, api):
-    return sess.get(api).json()
+    while True:
+        try:
+            return sess.get(api).json()
+        except requests.exceptions.ConnectionError as e:
+            eprint('Retrying failed request:', e)
+            time.sleep(3)
 
 def format_server_time(servertime):
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(servertime/1000))
