@@ -191,7 +191,7 @@
         }
         let speedField = document.getElementById('outputSpeed');
         if (locProperties && locProperties.speed) {
-            speedField.textContent = locProperties.speed.toPrecision(1);
+            speedField.textContent = locProperties.speed.toFixed(1);
         } else {
             speedField.textContent = '0';
         }
