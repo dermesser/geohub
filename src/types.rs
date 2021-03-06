@@ -17,6 +17,7 @@ pub struct GeoPoint {
 impl GeoPoint {
     fn to_gpx_waypoint(self) -> gpx::Waypoint {
         let mut wp = gpx::Waypoint::new(Point::new(self.long, self.lat));
+        wp.description = Some(format!("{}", self.id.unwrap_or(-1)));
         wp.elevation = self.ele;
         wp.speed = self.spd;
         wp.time = Some(self.time);
