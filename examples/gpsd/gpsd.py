@@ -29,11 +29,14 @@ def fetch_data(datastream, data, seen=set()):
     datastream.unpack(data)
     if datastream.TPV['time'] in seen:
         return None
+    if datastream.TPV['lat'] == 'n/a':
+        return None
     seen.add(datastream.TPV['time'])
     return datastream.TPV
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Fetch and send gpsd data')
+    parser.add_argument('--gpsdport', default=2947, help='Port of GPSd')
     parser.add_argument('--client', default='gpsd', help='Client name.')
     parser.add_argument('--secret', default='', help='Secret. This protects your current location; to share it, you have to share the secret. By default, the points will be made public on your GeoHub instance.')
     parser.add_argument('--interval', default=5, type=int, help='Poll interval. If 0, send every point received from gpsd.')
@@ -47,7 +50,7 @@ def run(args):
     session = requests.Session()
     socket = gps.GPSDSocket()
     datastream = gps.DataStream()
-    socket.connect()
+    socket.connect(port=args.gpsdport)
     socket.watch()
 
     geohub_base = args.geohub.format(PROTOCOL=args.geohub_scheme, HOST=args.geohub_host)
