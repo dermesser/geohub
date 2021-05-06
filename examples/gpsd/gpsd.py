@@ -16,6 +16,10 @@ def eprint(*args):
     print(*args, file=sys.stderr)
 
 def send_point(sess, args, info: dict[str, str]):
+    print(info)
+    if info['epx'] == 'n/a':
+        return None
+
     geohub_templ = args.geohub + '/{CLIENT}/log?secret={SECRET}'
     geohub_url = geohub_templ.format(HOST=args.geohub_host, CLIENT=args.client, SECRET=args.secret, PROTOCOL=args.geohub_scheme)
     additional = '&lat={lat}&longitude={long}&s={spd}&time={ts}&unit=ms&accuracy={acc}&ele={ele}'.format(
