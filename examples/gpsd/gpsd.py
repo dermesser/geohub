@@ -16,9 +16,8 @@ def eprint(*args):
     print(*args, file=sys.stderr)
 
 def send_point(sess, args, info: dict[str, str]):
-    print(info)
     if info['epx'] == 'n/a':
-        return None
+        info['epx'] = info['epy'] = 10.
 
     geohub_templ = args.geohub + '/{CLIENT}/log?secret={SECRET}'
     geohub_url = geohub_templ.format(HOST=args.geohub_host, CLIENT=args.client, SECRET=args.secret, PROTOCOL=args.geohub_scheme)
@@ -49,7 +48,7 @@ def parse_args():
     parser.add_argument('--outfile', default='data.jsonlines', help='Where to write the JSON data received from the train.')
     parser.add_argument('--geohub_host', default='example.com', help='Host of your GeoHub. Use this if the URL --geohub works for you.')
     parser.add_argument('--geohub_scheme', default='https', help='Protocol scheme of the GeoHub instance. Use this if you do not want to specify the entire --geohub URL')
-    parser.add_argument('--geohub', default='{PROTOCOL}://{HOST}/geo/', help='Base URL of Geohub instance. E.g., https://example.com/geo. Use --geohub_host, --geohub_scheme if your URL looks like the example.')
+    parser.add_argument('--geohub', default='{PROTOCOL}://{HOST}/geo', help='Base URL of Geohub instance. E.g., https://example.com/geo. Use --geohub_host, --geohub_scheme if your URL looks like the example.')
     return parser.parse_args()
 
 def run(args):
