@@ -17,8 +17,9 @@ def eprint(*args):
 def send_point(sess, args, info: dict[str, str]):
     geohub_templ = args.geohub + '/{CLIENT}/log?secret={SECRET}'
     geohub_url = geohub_templ.format(HOST=args.geohub_host, CLIENT=args.client, SECRET=args.secret, PROTOCOL=args.geohub_scheme)
-    additional = '&lat={lat}&longitude={long}&s={spd}&time={ts}&unit=ms&accuracy={acc}'.format(
-            lat=info['lat'], long=info['lon'], spd=info['speed'], ts=info['time'], acc=sqrt(info['epx']**2+info['epy']**2))
+    additional = '&lat={lat}&longitude={long}&s={spd}&time={ts}&unit=ms&accuracy={acc}&ele={ele}'.format(
+            lat=info['lat'], long=info['lon'], spd=info['speed'], ts=info['time'],
+            acc=sqrt(info['epx']**2+info['epy']**2), ele=info['alt'])
     # Delete unnecessary data.
     url = geohub_url + additional
     return sess.post(url, data="")
