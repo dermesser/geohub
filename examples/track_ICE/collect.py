@@ -40,7 +40,7 @@ def parse_args():
     parser.add_argument('--client', default='', help='Client name. By default, this will be the `tzn` (train number) of the current train.')
     parser.add_argument('--secret', default='', help='Secret. This protects your current location; to share it, you have to share the secret. By default, the points will be made public on your GeoHub instance.')
     parser.add_argument('--interval', default=5, type=int, help='Poll interval')
-    parser.add_argument('--outfile', default='traindata.jsonlines', help='Where to write the JSON data received from the train.')
+    parser.add_argument('--outfile', default='/dev/null', help='Where to write the JSON data received from the train.')
     parser.add_argument('--geohub_host', default='example.com', help='Host of your GeoHub. Use this if the URL --geohub works for you.')
     parser.add_argument('--geohub_scheme', default='https', help='Protocol scheme of the GeoHub instance. Use this if you do not want to specify the entire --geohub URL')
     parser.add_argument('--geohub', default='{PROTOCOL}://{HOST}/geo/', help='Base URL of Geohub instance. E.g., https://example.com/geo. Use --geohub_host, --geohub_scheme if your URL looks like the example.')
