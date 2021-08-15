@@ -16,9 +16,9 @@ def fetch_current(sess, api):
     while True:
         try:
             return requests.get(api).json()
-        except requests.exceptions.ConnectionError as e:
+        except Exception as e:
             eprint('Retrying failed request:', e)
-            time.sleep(3)
+            time.sleep(5)
 
 def format_server_time(servertime):
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(servertime/1000))
@@ -32,7 +32,11 @@ def send_point(sess, args, info: dict[str, str]):
     for k in ['latitude', 'longitude', 'speed', 'serverTime']:
         info.pop(k)
     url = geohub_url + additional
-    sess.post(url, json=info)
+    try:
+        sess.post(url, json=info)
+    except Exception as e:
+        eprint('Failed sending point; giving up for now')
+        return
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Fetch and send train data')
