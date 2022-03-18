@@ -15,7 +15,8 @@ def eprint(*args):
 def fetch_current(sess, api):
     while True:
         try:
-            return requests.get(api).json()
+            js = requests.get(api)
+            return js.json()
         except Exception as e:
             eprint('Retrying failed request:', e)
             time.sleep(5)
@@ -27,10 +28,11 @@ def send_point(sess, args, info: dict[str, str]):
     geohub_templ = args.geohub + '/{CLIENT}/log?secret={SECRET}'
     geohub_url = geohub_templ.format(HOST=args.geohub_host, CLIENT=args.client or info.get('tzn', 'TRAIN'), SECRET=args.secret, PROTOCOL=args.geohub_scheme)
     additional = '&lat={lat}&longitude={long}&s={spd}&time={ts}'.format(
-            lat=info['latitude'], long=info['longitude'], spd=info['speed'], ts=format_server_time(info['serverTime']))
+            lat=info['latitude'], long=info['longitude'], spd=info.get('speed', 0), ts=format_server_time(info.get('serverTime', time.time()*1e3)))
     # Delete unnecessary data.
     for k in ['latitude', 'longitude', 'speed', 'serverTime']:
-        info.pop(k)
+        if k in info:
+            info.pop(k)
     url = geohub_url + additional
     try:
         sess.post(url, json=info)
@@ -48,15 +50,19 @@ def parse_args():
     parser.add_argument('--geohub_host', default='example.com', help='Host of your GeoHub. Use this if the URL --geohub works for you.')
     parser.add_argument('--geohub_scheme', default='https', help='Protocol scheme of the GeoHub instance. Use this if you do not want to specify the entire --geohub URL')
     parser.add_argument('--geohub', default='{PROTOCOL}://{HOST}/geo/', help='Base URL of Geohub instance. E.g., https://example.com/geo. Use --geohub_host, --geohub_scheme if your URL looks like the example.')
+    parser.add_argument('--sbb', action='store_const', const=True, default=False, help='Use on SBB trains with on-board Wi-Fi')
     return parser.parse_args()
 
 def run(args):
+    if args.sbb:
+        args.api = 'https://onboard.sbb.ch/services/pis/v1/position'
+
     session = requests.Session()
     info = fetch_current(session, args.api)
     if not info:
         eprint('Empty info received!')
         return
-    tzn = info['tzn']
+    tzn = info.get('tzn', 'SBB_EC')
     geohub_base = args.geohub.format(PROTOCOL=args.geohub_scheme, HOST=args.geohub_host)
     livemap_url = geohub_base + 'assets/livemap.html?client={client}&secret={secret}'.format(client=args.client, secret=args.secret)
     eprint('Running in train:', tzn)
@@ -70,7 +76,7 @@ def run(args):
             if lastpoint is None or lastpoint != (info['latitude'], info['longitude']):
                 lastpoint = (info['latitude'], info['longitude'])
                 if info:
-                    eprint('{} :: Sending point ({}, {}) to GeoHub.'.format(format_server_time(info['serverTime']), info['longitude'], info['latitude']))
+                    eprint('{} :: Sending point ({}, {}) to GeoHub.'.format(format_server_time(info.get('serverTime', time.time()*1e3)), info['longitude'], info['latitude']))
                     send_point(session, args, info)
                     outfile.write(json.dumps(info))
                     outfile.write('\n')
